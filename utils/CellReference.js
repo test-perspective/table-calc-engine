@@ -1,4 +1,4 @@
-class CellReference {
+export class CellReference {
     static parse(reference) {
       const match = reference.match(/^(\$?)([A-Z]+)(\$?)(\d+)$/);
       if (!match) throw new Error('Invalid cell reference');

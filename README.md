@@ -18,32 +18,28 @@ Excel-like formula calculation engine implemented in JavaScript.
 
 ## Installation 
 ```bash
-bash
-npm install
+npm install excel-formula-engine
 ```
 ## Usage
 
 ```javascript
-import { FormulaEngine } from './src/FormulaEngine.js';
-
+import { FormulaEngine } from 'excel-formula-engine';
 const engine = new FormulaEngine();
-
 const data = {
-  tableData: [
-    [
-      { value: "1", resolved: true, tableNumber: 0, macroId: null, excelFormat: null },
-      { value: "2", resolved: true, tableNumber: 0, macroId: null, excelFormat: null }
-    ],
-    [
-      { value: "3", resolved: true, tableNumber: 0, macroId: null, excelFormat: null }, 
-      { value: "4", resolved: true, tableNumber: 0, macroId: null, excelFormat: null }
-    ]
-  ],
-  formulas: [
-    { value: "=SUM(A1:B2)", resolved: false, tableNumber: 0, macroId: "xxx", excelFormat: "###.##" }
-  ]
+tableData: [
+[
+{ value: "1", resolved: true, tableNumber: 0, macroId: null, excelFormat: null },
+{ value: "2", resolved: true, tableNumber: 0, macroId: null, excelFormat: null }
+],
+[
+{ value: "3", resolved: true, tableNumber: 0, macroId: null, excelFormat: null },
+{ value: "4", resolved: true, tableNumber: 0, macroId: null, excelFormat: null }
+]
+],
+formulas: [
+{ value: "=SUM(A1:B2)", resolved: false, tableNumber: 0, macroId: "xxx", excelFormat: "###.##" }
+]
 };
-
 const result = engine.processData(data);
 console.log(result);
 ```

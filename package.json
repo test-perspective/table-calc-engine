@@ -1,8 +1,16 @@
 {
-  "name": "excel-formula-engine",
+  "name": "table-calc-engine",
   "version": "1.0.0",
+  "description": "Excel-like formula calculation engine implemented in JavaScript",
   "type": "module",
   "main": "src/index.js",
+  "keywords": ["excel", "formula", "calculator", "spreadsheet"],
+  "author": "test-perspective",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/test-perspective/table-calc-engine.git"
+  },
   "scripts": {
     "start": "node src/index.js",
     "test": "node test/index.js"
