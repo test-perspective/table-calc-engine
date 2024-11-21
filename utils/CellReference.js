@@ -1,14 +1,12 @@
 export class CellReference {
     static parse(reference) {
-      const match = reference.match(/^(\$?)([A-Z]+)(\$?)(\d+)$/);
-      if (!match) throw new Error('Invalid cell reference');
+      const match = reference.match(/^([A-Z]+)(\d+)$/);
+      if (!match) throw new Error(`Invalid cell reference: ${reference}`);
   
-      const [, colAbs, col, rowAbs, row] = match;
+      const [, col, row] = match;
       return {
         column: this.columnToIndex(col),
-        row: parseInt(row) - 1,
-        isColAbsolute: colAbs === '$',
-        isRowAbsolute: rowAbs === '$'
+        row: parseInt(row) - 1
       };
     }
   
@@ -24,4 +22,15 @@ export class CellReference {
         end: this.parse(end)
       };
     }
-  }
+
+    static columnToLetter(column) {
+      let temp = column + 1;
+      let letter = '';
+      while (temp > 0) {
+        temp--;
+        letter = String.fromCharCode(65 + (temp % 26)) + letter;
+        temp = Math.floor(temp / 26);
+      }
+      return letter;
+    }
+}

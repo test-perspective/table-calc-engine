@@ -7,60 +7,80 @@ export class FormulaEngine {
   constructor() {
     this.parser = new FormulaParser();
     this.cache = new Map();
+    this.functions = ExcelFunctions;
   }
 
-  processData(data) {
+  processData(tables) {
+    if (!Array.isArray(tables)) {
+      throw new Error('Input must be an array of tables');
+    }
+
     try {
-      console.log('Processing formulas:', data.formulas);
-      
-      // テーブルデータの正規化
-      const normalizedTableData = data.tableData.map(row =>
-        row.map(cell => ({
-          ...cell,
-          value: !isNaN(Number(cell.value)) ? Number(cell.value) : cell.value
-        }))
+      // すべてのテーブルを正規化
+      const normalizedTables = tables.map(table =>
+        table.map(row =>
+          row.map(cell => ({
+            ...cell,
+            value: !isNaN(Number(cell.value)) ? Number(cell.value) : cell.value
+          }))
+        )
       );
 
-      // formulasの処理
-      const processedFormulas = data.formulas.map(formula => {
-        console.log('\nProcessing formula:', formula.value);
-        
-        if (!formula.resolved) {
-          const result = this.evaluateFormula(formula.value, normalizedTableData);
-          console.log('Formula result:', result);
-          
-          return {
-            ...formula,
-            value: result,
-            displayValue: this.formatValue(result, formula.excelFormat),
-            resolved: true
-          };
-        }
-        return formula;
-      });
+      // 各テーブルの数式を処理
+      const processedTables = normalizedTables.map((table, tableIndex) =>
+        this.processTableData(table, normalizedTables, tableIndex)
+      );
+
+      // 全テーブルから数式を抽出
+      const extractedFormulas = this.extractFormulas(processedTables);
 
       return {
-        tableData: normalizedTableData,
-        formulas: processedFormulas
+        tables: processedTables,
+        formulas: extractedFormulas
       };
     } catch (error) {
       console.error('Processing error:', error);
-      return this.handleError(error);
+      // handleErrorの代わりにエラーオブジェクトを返す
+      return {
+        tables: [],
+        formulas: [],
+        error: error.message
+      };
     }
   }
 
-  processTableData(tableData) {
-    return tableData.map(row =>
+  processTableData(table, allTables, currentTableIndex) {
+    return table.map(row =>
       row.map(cell => {
-        if (!cell.resolved && cell.value.startsWith('=')) {
-          const result = this.evaluateFormula(cell.value, tableData);
+        // 値が文字列で、かつ'='で始まる場合のみ数式として処理
+        if (cell.value && typeof cell.value === 'string' && cell.value.startsWith('=')) {
+          const result = this.evaluateFormula(cell.value, allTables, currentTableIndex);
+          const formattedResult = this.formatValue(result, cell.excelFormat);
           return {
             ...cell,
-            value: this.formatValue(result, cell.excelFormat),
+            value: cell.value,
+            resolvedValue: result,
+            displayValue: formattedResult,
             resolved: true
           };
         }
-        return cell;
+        // 数値の場合は数値のまま返す
+        if (!isNaN(Number(cell.value))) {
+          return {
+            ...cell,
+            value: Number(cell.value),
+            resolvedValue: Number(cell.value),
+            displayValue: this.formatValue(Number(cell.value), cell.excelFormat),
+            resolved: true
+          };
+        }
+        // その他の場合は元の値をそのまま返す
+        return {
+          ...cell,
+          resolvedValue: cell.value,
+          displayValue: cell.value,
+          resolved: true
+        };
       })
     );
   }
@@ -79,72 +99,129 @@ export class FormulaEngine {
     });
   }
 
-  evaluateFormula(formula, tableData) {
+  evaluateFormula(formula, allTables, currentTableIndex) {
     try {
-      // '=' で始まらない場合は直接値を返す
       if (!formula.startsWith('=')) {
         return formula;
       }
 
-      const formulaWithoutEquals = formula.substring(1); // '=' を削除
+      const formulaWithoutEquals = formula.substring(1);
       const ast = this.parser.parse(formulaWithoutEquals);
-      console.log('Formula:', formula);
-      console.log('AST:', JSON.stringify(ast, null, 2));
-      
+
       if (ast.type === 'function') {
         const values = ast.arguments.map(arg => {
           if (arg.type === 'range') {
-            return this.getRangeValues(arg.reference, tableData);
+            return this.getRangeValues(arg.reference, allTables, currentTableIndex);
           }
           if (arg.type === 'cell') {
-            return [this.getCellValue(arg.reference, tableData)];
+            return [this.getCellValue(arg.reference, allTables, currentTableIndex)];
           }
           return [arg.value];
         }).flat();
 
-        console.log('Values for', ast.name, ':', values);
-        
         const funcName = ast.name.toUpperCase();
-        if (!(funcName in ExcelFunctions)) {
+        if (!(funcName in this.functions)) {
           throw new Error(`Unknown function: ${funcName}`);
         }
-        
-        const result = ExcelFunctions[funcName](values);
-        console.log('Function result:', result);
-        
-        return result;
+
+        return this.functions[funcName](values);
+      } else if (ast.type === 'literal' && typeof ast.value === 'string' && ast.value.includes('!')) {
+        // テーブル参照の処理
+        const [tableRef, cellRef] = this.parseTableReference(ast.value);
+        if (tableRef !== null) {
+          return this.getCellValue(cellRef, allTables, tableRef);
+        }
       }
-      
-      return '#ERROR!';
+
+      return ast.value ?? '#ERROR!';
     } catch (error) {
       console.error('Formula evaluation error:', error);
       return '#ERROR!';
     }
   }
 
-  getRangeValues(range, tableData) {
+  getRangeValues(reference, allTables, currentTableIndex) {
     try {
-      const { start, end } = CellReference.parseRange(range);
+      const [tableRef, rangeRef] = this.parseTableReference(reference);
+      const targetTableIndex = tableRef !== null ? tableRef : currentTableIndex;
+      const targetTable = allTables[targetTableIndex];
+
+      if (!targetTable) {
+        throw new Error(`Invalid table reference: ${tableRef}`);
+      }
+
+      const { start, end } = CellReference.parseRange(rangeRef);
       const values = [];
-      
-      console.log('Getting range values for', range);
-      console.log('Start:', start, 'End:', end);
-      
+
       for (let row = start.row; row <= end.row; row++) {
         for (let col = start.column; col <= end.column; col++) {
-          if (!tableData[row] || !tableData[row][col]) {
-            throw new Error(`Invalid range reference: ${range}`);
+          if (!targetTable[row] || !targetTable[row][col]) {
+            throw new Error(`Invalid range reference: ${rangeRef}`);
           }
-          const value = Number(tableData[row][col].value);
-          console.log(`Cell [${row},${col}] value:`, value);
+          const cellValue = targetTable[row][col].resolvedValue ?? targetTable[row][col].value;
+          const value = !isNaN(Number(cellValue)) ? Number(cellValue) : cellValue;
           values.push(value);
         }
       }
-      
-      console.log('Collected values:', values);
+
       return values;
     } catch (error) {
       console.error('Error in getRangeValues:', error);
+      throw error;
+    }
+  }
+
+  parseTableReference(reference) {
+    if (typeof reference !== 'string') {
+      return [null, reference];
+    }
+    const parts = reference.split('!');
+    if (parts.length === 2) {
+      return [parseInt(parts[0]), parts[1]];
+    }
+    return [null, reference];
+  }
+
+  extractFormulas(tables) {
+    const formulas = [];
+    tables.forEach((table, tableIndex) => {
+      table.forEach((row, rowIndex) => {
+        row.forEach((cell, colIndex) => {
+          if (typeof cell.value === 'string' && cell.value.startsWith('=')) {
+            formulas.push({
+              value: cell.value,
+              resolvedValue: cell.resolvedValue,
+              displayValue: cell.displayValue,
+              tableIndex,
+              position: `${CellReference.columnToLetter(colIndex)}${rowIndex + 1}`,
+              resolved: true,
+              excelFormat: cell.excelFormat
+            });
+          }
+        });
+      });
+    });
+    return formulas;
+  }
+
+  getCellValue(reference, allTables, tableIndex) {
+    try {
+      const [targetTableIndex, cellRef] = this.parseTableReference(reference);
+      const targetTable = allTables[targetTableIndex ?? tableIndex];
+      
+      if (!targetTable) {
+        throw new Error(`Invalid table reference: ${targetTableIndex}`);
+      }
+
+      const { row, column } = CellReference.parse(cellRef);
+      if (!targetTable[row] || !targetTable[row][column]) {
+        throw new Error(`Invalid cell reference: ${cellRef}`);
+      }
+
+      const cell = targetTable[row][column];
+      return cell.resolvedValue ?? cell.value;
+    } catch (error) {
+      console.error('Error in getCellValue:', error);
       throw error;
     }
   }
