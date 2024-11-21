@@ -1,4 +1,4 @@
-import { FormulaEngine } from '../FormulaEngine.js';
+import { FormulaEngine } from './FormulaEngine.js';
 
 const testData = [
   // テーブル0
