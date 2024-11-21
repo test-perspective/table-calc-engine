@@ -45,6 +45,20 @@ const result = engine.processData(data);
 console.log(result);
 ```
 
+## Development Status
+
+Current development focuses on:
+- Basic arithmetic operations
+- Core Excel functions
+- Cell reference handling
+- Number formatting
+
+Upcoming features:
+- More Excel functions
+- Advanced error handling
+- Performance optimizations
+- Comprehensive testing
+
 ## License
 
 MIT
