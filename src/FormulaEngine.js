@@ -105,9 +105,25 @@ export class FormulaEngine {
         return formula;
       }
 
+      // 数式から'='を除去
       const formulaWithoutEquals = formula.substring(1);
-      const ast = this.parser.parse(formulaWithoutEquals);
+      
+      // 単純な算術演算の場合
+      if (formulaWithoutEquals.match(/^[\d\s+\-*/^()]+$/)) {
+        try {
+          // 安全な評価のため、Function constructorは使用せず、
+          // 独自のパーサーで処理
+          const ast = this.parser.parse(formulaWithoutEquals);
+          const result = this.evaluateAst(ast, allTables, currentTableIndex);
+          return result;
+        } catch (e) {
+          console.error('Arithmetic evaluation error:', e);
+          return '#ERROR!';
+        }
+      }
 
+      // 関数呼び出しの場合
+      const ast = this.parser.parse(formulaWithoutEquals);
       if (ast.type === 'function') {
         const values = ast.arguments.map(arg => {
           if (arg.type === 'range') {
@@ -125,15 +141,11 @@ export class FormulaEngine {
         }
 
         return this.functions[funcName](values);
-      } else if (ast.type === 'literal' && typeof ast.value === 'string' && ast.value.includes('!')) {
-        // テーブル参照の処理
-        const [tableRef, cellRef] = this.parseTableReference(ast.value);
-        if (tableRef !== null) {
-          return this.getCellValue(cellRef, allTables, tableRef);
-        }
       }
 
-      return ast.value ?? '#ERROR!';
+      // その他の演算の場合
+      return this.evaluateAst(ast, allTables, currentTableIndex);
+
     } catch (error) {
       console.error('Formula evaluation error:', error);
       return '#ERROR!';
@@ -242,7 +254,7 @@ export class FormulaEngine {
         const decimals = hasDecimal ? parts[1].length : 0;
         
         // 数値を指定された桁数でフォーマット
-        // Excelの仕様に従い、先頭のスペースパディングは行わない
+        // Excelの仕様に従い、先頭のスペスパディングは行わない
         return value.toFixed(decimals);
       }
 
@@ -260,5 +272,51 @@ export class FormulaEngine {
   getDecimalPlaces(format) {
     const match = format.match(/\.(\d+)/);
     return match ? match[1].length : 0;
+  }
+
+  evaluateAst(ast, allTables, currentTableIndex) {
+    if (!ast) return null;
+
+    switch (ast.type) {
+      case 'literal':
+        return ast.value;
+
+      case 'operation':
+        const left = this.evaluateAst(ast.left, allTables, currentTableIndex);
+        const right = this.evaluateAst(ast.right, allTables, currentTableIndex);
+        
+        switch (ast.operator) {
+          // 算術演算子
+          case '+': return Number(left) + Number(right);
+          case '-': return Number(left) - Number(right);
+          case '*': return Number(left) * Number(right);
+          case '/': 
+            if (Number(right) === 0) return '#DIV/0!';
+            return Number(left) / Number(right);
+          case '^': return Math.pow(Number(left), Number(right));
+          
+          // 文字列連結
+          case '&': return String(left) + String(right);
+          
+          // 比較演算子
+          case '=': return left === right;
+          case '<>': return left !== right;
+          case '>': return Number(left) > Number(right);
+          case '<': return Number(left) < Number(right);
+          case '>=': return Number(left) >= Number(right);
+          case '<=': return Number(left) <= Number(right);
+          
+          default: throw new Error(`Unknown operator: ${ast.operator}`);
+        }
+
+      case 'cell':
+        return this.getCellValue(ast.reference, allTables, currentTableIndex);
+
+      case 'range':
+        return this.getRangeValues(ast.reference, allTables, currentTableIndex);
+
+      default:
+        throw new Error(`Unknown AST type: ${ast.type}`);
+    }
   }
 } 
