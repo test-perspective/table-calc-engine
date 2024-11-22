@@ -25,6 +25,43 @@ export class FormulaParser {
     return this.parseArithmetic(expression);
   }
 
+  parseArithmetic(expression) {
+    // 単純な数値の場合
+    if (!isNaN(expression)) {
+      return {
+        type: 'literal',
+        value: Number(expression)
+      };
+    }
+
+    // 演算子を探す
+    const operators = ['+', '-', '*', '/', '^'];
+    let operator = null;
+    let splitIndex = -1;
+
+    for (const op of operators) {
+      splitIndex = expression.lastIndexOf(op);
+      if (splitIndex !== -1) {
+        operator = op;
+        break;
+      }
+    }
+
+    if (splitIndex === -1) {
+      throw new Error(`Invalid arithmetic expression: ${expression}`);
+    }
+
+    const left = expression.substring(0, splitIndex).trim();
+    const right = expression.substring(splitIndex + 1).trim();
+
+    return {
+      type: 'operation',
+      operator: operator,
+      left: this.parse(left),
+      right: this.parse(right)
+    };
+  }
+
   parseArgument(arg) {
     // 範囲参照（例：A1:B2）
     if (arg.includes(':')) {
@@ -50,19 +87,7 @@ export class FormulaParser {
       };
     }
     
-    throw new Error(`Invalid argument: ${arg}`);
-  }
-
-  parseArithmetic(expression) {
-    // 単純な数値の場合
-    if (!isNaN(expression)) {
-      return {
-        type: 'literal',
-        value: Number(expression)
-      };
-    }
-    
-    // その他の算術演算は必要に応じて実装
-    throw new Error(`Unsupported arithmetic expression: ${expression}`);
+    // その他の式
+    return this.parseArithmetic(arg);
   }
 } 

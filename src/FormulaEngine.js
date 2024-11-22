@@ -100,14 +100,24 @@ export class FormulaEngine {
     });
   }
 
-  evaluateFormula(formula, allTables, currentTableIndex) {
+  evaluateFormula(formula, allTables, currentTableIndex, visited = new Set()) {
     try {
       if (!formula.startsWith('=')) {
         return formula;
       }
 
+      // 循環参照のチェック
+      const formulaKey = `${currentTableIndex}:${formula}`;
+      if (visited.has(formulaKey)) {
+        return '#CIRCULAR!';
+      }
+      visited.add(formulaKey);
+
       const ast = this.parser.parse(formula);
-      return this.evaluateAst(ast, allTables, currentTableIndex);
+      const result = this.evaluateAst(ast, allTables, currentTableIndex, visited);
+      
+      visited.delete(formulaKey);
+      return result;
     } catch (error) {
       console.error('Formula evaluation error:', error);
       return '#ERROR!';
@@ -124,6 +134,30 @@ export class FormulaEngine {
         }
         return this.functions[ast.name](ast.arguments, allTables, currentTableIndex);
 
+      case 'operation':
+        const left = this.evaluateAst(ast.left, allTables, currentTableIndex);
+        const right = this.evaluateAst(ast.right, allTables, currentTableIndex);
+        
+        // 数値に変換
+        const leftNum = Number(left);
+        const rightNum = Number(right);
+        
+        if (isNaN(leftNum) || isNaN(rightNum)) {
+          return '#ERROR!';
+        }
+
+        switch (ast.operator) {
+          case '+': return leftNum + rightNum;
+          case '-': return leftNum - rightNum;
+          case '*': return leftNum * rightNum;
+          case '/':
+            if (rightNum === 0) return '#DIV/0!';
+            return leftNum / rightNum;
+          case '^': return Math.pow(leftNum, rightNum);
+          default:
+            throw new Error(`Unknown operator: ${ast.operator}`);
+        }
+
       case 'cell':
         return this.getCellValue(ast.reference, allTables, currentTableIndex);
 
@@ -138,7 +172,7 @@ export class FormulaEngine {
     }
   }
 
-  sumFunction(args, allTables, currentTableIndex) {
+  sumFunction(args, allTables, currentTableIndex, visited) {
     try {
       const values = args.map(arg => {
         if (arg.type === 'range') {
@@ -146,7 +180,7 @@ export class FormulaEngine {
         } else if (arg.type === 'cell') {
           return [this.getCellValue(arg.reference, allTables, currentTableIndex)];
         } else {
-          return [this.evaluateAst(arg, allTables, currentTableIndex)];
+          return [this.evaluateAst(arg, allTables, currentTableIndex, visited)];
         }
       }).flat();
 
@@ -194,9 +228,18 @@ export class FormulaEngine {
       }
 
       const cell = table[row][column];
-      return typeof cell.value === 'string' && cell.value.startsWith('=')
-        ? cell.resolvedValue
-        : cell.value;
+      
+      // 参照先のセルが数式を含む場合
+      if (typeof cell.value === 'string' && cell.value.startsWith('=')) {
+        // resolvedValueが未設定の場合、数式を評価
+        if (cell.resolvedValue === undefined) {
+          cell.resolvedValue = this.evaluateFormula(cell.value, allTables, currentTableIndex);
+          cell.displayValue = cell.resolvedValue;
+        }
+        return cell.resolvedValue;
+      }
+      
+      return cell.value;
     } catch (error) {
       console.error('Error in getCellValue:', error);
       return '#REF!';
