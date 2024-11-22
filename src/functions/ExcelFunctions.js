@@ -1,26 +1,38 @@
 export class ExcelFunctions {
   static SUM(values) {
-    const numbers = values.filter(val => typeof val === 'number');
-    return numbers.reduce((sum, val) => sum + val, 0);
+    return values.reduce((sum, value) => {
+      const num = Number(value);
+      return isNaN(num) ? sum : sum + num;
+    }, 0);
   }
 
   static AVERAGE(values) {
-    const numbers = values.filter(val => typeof val === 'number');
-    if (numbers.length === 0) return 0;
-    return this.SUM(numbers) / numbers.length;
+    if (values.length === 0) return '#DIV/0!';
+    const sum = this.SUM(values);
+    if (typeof sum !== 'number') return sum;
+    return sum / values.length;
   }
 
   static COUNT(values) {
-    return values.filter(val => !isNaN(Number(val))).length;
+    return values.filter(value => 
+      typeof value === 'number' || 
+      (typeof value === 'string' && !isNaN(value))
+    ).length;
   }
 
   static MAX(values) {
-    const numbers = values.filter(val => !isNaN(Number(val)));
+    const numbers = values
+      .map(v => Number(v))
+      .filter(n => !isNaN(n));
+    if (numbers.length === 0) return '#ERROR!';
     return Math.max(...numbers);
   }
 
   static MIN(values) {
-    const numbers = values.filter(val => !isNaN(Number(val)));
+    const numbers = values
+      .map(v => Number(v))
+      .filter(n => !isNaN(n));
+    if (numbers.length === 0) return '#ERROR!';
     return Math.min(...numbers);
   }
 

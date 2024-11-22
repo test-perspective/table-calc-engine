@@ -63,4 +63,31 @@ describe('FormulaEngine', () => {
     const result = engine.evaluateFormula('=1/0', testData, 0);
     expect(result).toBe('#DIV/0!');
   });
+
+  describe('Excel Functions', () => {
+    test('should calculate SUM correctly', () => {
+      const result = engine.evaluateFormula('=SUM(A2:B3)', testData, 0);
+      expect(result).toBe(12); // 1 + 2 + 4 + 5 = 12
+    });
+
+    test('should calculate AVERAGE correctly', () => {
+      const result = engine.evaluateFormula('=AVERAGE(A2:B3)', testData, 0);
+      expect(result).toBe(3); // (1 + 2 + 4 + 5) / 4 = 3
+    });
+
+    test('should calculate COUNT correctly', () => {
+      const result = engine.evaluateFormula('=COUNT(A2:B3)', testData, 0);
+      expect(result).toBe(4); // 4 numeric values
+    });
+
+    test('should calculate MAX correctly', () => {
+      const result = engine.evaluateFormula('=MAX(A2:B3)', testData, 0);
+      expect(result).toBe(5); // highest value is 5
+    });
+
+    test('should calculate MIN correctly', () => {
+      const result = engine.evaluateFormula('=MIN(A2:B3)', testData, 0);
+      expect(result).toBe(1); // lowest value is 1
+    });
+  });
 }); 

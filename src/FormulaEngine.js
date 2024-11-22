@@ -7,8 +7,44 @@ export class FormulaEngine {
   constructor() {
     this.parser = new FormulaParser();
     this.functions = {
-      'SUM': this.sumFunction.bind(this)
+      'SUM': (args, allTables, currentTableIndex) => {
+        const values = this.getFunctionArgValues(args, allTables, currentTableIndex);
+        return ExcelFunctions.SUM(values);
+      },
+      'AVERAGE': (args, allTables, currentTableIndex) => {
+        const values = this.getFunctionArgValues(args, allTables, currentTableIndex);
+        return ExcelFunctions.AVERAGE(values);
+      },
+      'COUNT': (args, allTables, currentTableIndex) => {
+        const values = this.getFunctionArgValues(args, allTables, currentTableIndex);
+        return ExcelFunctions.COUNT(values);
+      },
+      'MAX': (args, allTables, currentTableIndex) => {
+        const values = this.getFunctionArgValues(args, allTables, currentTableIndex);
+        return ExcelFunctions.MAX(values);
+      },
+      'MIN': (args, allTables, currentTableIndex) => {
+        const values = this.getFunctionArgValues(args, allTables, currentTableIndex);
+        return ExcelFunctions.MIN(values);
+      }
     };
+  }
+
+  getFunctionArgValues(args, allTables, currentTableIndex) {
+    try {
+      return args.map(arg => {
+        if (arg.type === 'range') {
+          return this.getRangeValues(arg.reference, allTables, currentTableIndex);
+        } else if (arg.type === 'cell') {
+          return [this.getCellValue(arg.reference, allTables, currentTableIndex)];
+        } else {
+          return [this.evaluateAst(arg, allTables, currentTableIndex)];
+        }
+      }).flat();
+    } catch (error) {
+      console.error('Error in getFunctionArgValues:', error);
+      throw error;
+    }
   }
 
   processData(tables) {
