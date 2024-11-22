@@ -39,8 +39,8 @@ const testData2 = [
         [
             {"value":"3","resolved":true,"macroId":null,"excelFormat":null},
             {"value":"4","resolved":true,"macroId":null,"excelFormat":null},
-            {"value":"=sum(a1:b2)","resolved":false,"macroId":"bc35cfc0-e1ed-4624-84cf-17855bcfa9a7","excelFormat":"####.#"}                
-              // {"value":"=1+2","resolved":false,"macroId":"331acef9-8841-401c-ba97-3c64a506865f","excelFormat":""}],[{"value":"3","resolved":true,"macroId":null,"excelFormat":null},{"value":"4","resolved":true,"macroId":null,"excelFormat":null},{"value":"=sum(a1:b2)","resolved":false,"macroId":"bc35cfc0-e1ed-4624-84cf-17855bcfa9a7","excelFormat":"####.#"}
+            // {"value":"=sum(a1:b2)","resolved":false,"macroId":"bc35cfc0-e1ed-4624-84cf-17855bcfa9a7","excelFormat":"####.#"}                
+              {"value":"=a2","resolved":false,"macroId":"331acef9-8841-401c-ba97-3c64a506865f","excelFormat":""}],[{"value":"3","resolved":true,"macroId":null,"excelFormat":null},{"value":"4","resolved":true,"macroId":null,"excelFormat":null},{"value":"=sum(a1:b2)","resolved":false,"macroId":"bc35cfc0-e1ed-4624-84cf-17855bcfa9a7","excelFormat":"####.#"}
         ]
     ]
 ]

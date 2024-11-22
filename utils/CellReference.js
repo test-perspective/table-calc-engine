@@ -11,28 +11,32 @@ export class CellReference {
       };
     }
   
-    static columnToIndex(col) {
-      return col.split('').reduce((acc, char) => 
-        acc * 26 + char.charCodeAt(0) - 'A'.charCodeAt(0) + 1, 0) - 1;
-    }
-  
     static parseRange(range) {
-      const upperRange = range.toUpperCase();
-      const [start, end] = upperRange.split(':');
+      const [start, end] = range.split(':');
       return {
         start: this.parse(start),
         end: this.parse(end)
       };
     }
-
-    static columnToLetter(column) {
-      let temp = column + 1;
-      let letter = '';
+  
+    static columnToIndex(col) {
+      return col.split('').reduce((acc, char) => 
+        acc * 26 + char.charCodeAt(0) - 'A'.charCodeAt(0), 0);
+    }
+  
+    static indexToColumn(index) {
+      let column = '';
+      let temp = index + 1;
+      
       while (temp > 0) {
         temp--;
-        letter = String.fromCharCode(65 + (temp % 26)) + letter;
+        column = String.fromCharCode(65 + (temp % 26)) + column;
         temp = Math.floor(temp / 26);
       }
-      return letter;
+      return column;
+    }
+  
+    static columnToLetter(index) {
+      return this.indexToColumn(index);
     }
 }

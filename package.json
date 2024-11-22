@@ -1,6 +1,6 @@
 {
   "name": "table-calc-engine",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Excel-like formula calculation engine implemented in JavaScript",
   "type": "module",
   "main": "src/index.js",
