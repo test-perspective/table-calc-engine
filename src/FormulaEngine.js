@@ -195,7 +195,8 @@ export class FormulaEngine {
               tableIndex,
               position: `${CellReference.columnToLetter(colIndex)}${rowIndex + 1}`,
               resolved: true,
-              excelFormat: cell.excelFormat
+              excelFormat: cell.excelFormat,
+              macroId: cell.macroId
             });
           }
         });

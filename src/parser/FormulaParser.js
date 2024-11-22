@@ -61,4 +61,30 @@ export class FormulaParser {
       value: formula
     };
   }
+
+  tokenize(formula) {
+    const tokens = [];
+    let current = '';
+    
+    for (let i = 0; i < formula.length; i++) {
+      const char = formula[i];
+      
+      if ('+-*/(),:'.includes(char)) {
+        if (current) {
+          // セル参照を大文字に変換
+          tokens.push(current.toUpperCase());
+        }
+        tokens.push(char);
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    
+    if (current) {
+      // セル参照を大文字に変換
+      tokens.push(current.toUpperCase());
+    }
+    return tokens;
+  }
 } 

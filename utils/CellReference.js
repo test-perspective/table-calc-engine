@@ -1,6 +1,7 @@
 export class CellReference {
     static parse(reference) {
-      const match = reference.match(/^([A-Z]+)(\d+)$/);
+      const upperRef = reference.toUpperCase();
+      const match = upperRef.match(/^([A-Z]+)(\d+)$/);
       if (!match) throw new Error(`Invalid cell reference: ${reference}`);
   
       const [, col, row] = match;
@@ -16,7 +17,8 @@ export class CellReference {
     }
   
     static parseRange(range) {
-      const [start, end] = range.split(':');
+      const upperRange = range.toUpperCase();
+      const [start, end] = upperRange.split(':');
       return {
         start: this.parse(start),
         end: this.parse(end)
