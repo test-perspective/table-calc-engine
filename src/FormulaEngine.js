@@ -47,49 +47,64 @@ export class FormulaEngine {
     }
   }
 
-  processData(tables) {
-    if (!Array.isArray(tables)) {
-      throw new Error('Input must be an array of tables');
-    }
+  processData(data) {
+    console.log('Starting processData');
+    const result = {
+      tables: JSON.parse(JSON.stringify(data)),
+      formulas: []
+    };
 
-    try {
-      // すべてのテーブルを正規化
-      const normalizedTables = tables.map(table =>
-        table.map(row =>
-          row.map(cell => ({
-            ...cell,
-            value: !isNaN(Number(cell.value)) ? Number(cell.value) : cell.value
-          }))
-        )
-      );
+    result.tables.forEach((table, tableIndex) => {
+      table.forEach((rows, sheetIndex) => {
+        rows.forEach((cell, colIndex) => {
+          const originalCell = { ...cell };
 
-      // 各テーブルの数式を処理
-      const processedTables = normalizedTables.map((table, tableIndex) =>
-        this.processTableData(table, normalizedTables, tableIndex)
-      );
+          if (typeof cell.value === 'string' && cell.value.startsWith('=')) {
+            try {
+              const formula = cell.value;
+              const resolvedValue = this.evaluateFormula(formula, result.tables, tableIndex);
+              
+              cell.resolvedValue = resolvedValue;
+              cell.displayValue = this.formatValue(resolvedValue, cell.excelFormat);
+              cell.resolved = true;
 
-      // 全テーブルから数式を抽出
-      const extractedFormulas = this.extractFormulas(processedTables);
+              result.formulas.push({
+                tableIndex,
+                sheetIndex,
+                colIndex,
+                formula,
+                resolvedValue,
+                displayValue: cell.displayValue,
+                excelFormat: cell.excelFormat,
+                macroId: originalCell.macroId,
+                style: originalCell.style,
+                metadata: originalCell.metadata,
+                validation: originalCell.validation,
+                comment: originalCell.comment,
+                originalCell: originalCell
+              });
+            } catch (error) {
+              console.error('Formula evaluation error:', error);
+              cell.resolvedValue = '#ERROR!';
+              cell.displayValue = '#ERROR!';
+              cell.resolved = false;
+            }
+          } else {
+            cell.resolvedValue = cell.value;
+            cell.displayValue = this.formatValue(cell.value, cell.excelFormat);
+            cell.resolved = true;
+          }
+        });
+      });
+    });
 
-      return {
-        tables: processedTables,
-        formulas: extractedFormulas
-      };
-    } catch (error) {
-      console.error('Processing error:', error);
-      // handleErrorの代わりにエラーオブジェクトを返す
-      return {
-        tables: [],
-        formulas: [],
-        error: error.message
-      };
-    }
+    console.log('ProcessData completed successfully');
+    return result;
   }
 
   processTableData(table, allTables, currentTableIndex) {
     return table.map(row =>
       row.map(cell => {
-        // 値が文字列で、かつ'='で始まる場合のみ数式として処理
         if (cell.value && typeof cell.value === 'string' && cell.value.startsWith('=')) {
           const result = this.evaluateFormula(cell.value, allTables, currentTableIndex);
           const formattedResult = this.formatValue(result, cell.excelFormat);
@@ -101,7 +116,6 @@ export class FormulaEngine {
             resolved: true
           };
         }
-        // 数値の場合は数値のまま返す
         if (!isNaN(Number(cell.value))) {
           return {
             ...cell,
@@ -111,7 +125,6 @@ export class FormulaEngine {
             resolved: true
           };
         }
-        // その他の場合は元の値をそのまま返す
         return {
           ...cell,
           resolvedValue: cell.value,
@@ -142,7 +155,6 @@ export class FormulaEngine {
         return formula;
       }
 
-      // 循環参照のチェック
       const formulaKey = `${currentTableIndex}:${formula}`;
       if (visited.has(formulaKey)) {
         return '#CIRCULAR!';
@@ -174,7 +186,6 @@ export class FormulaEngine {
         const left = this.evaluateAst(ast.left, allTables, currentTableIndex);
         const right = this.evaluateAst(ast.right, allTables, currentTableIndex);
         
-        // 数値に変換
         const leftNum = Number(left);
         const rightNum = Number(right);
         
@@ -265,9 +276,7 @@ export class FormulaEngine {
 
       const cell = table[row][column];
       
-      // 参照先のセルが数式を含む場合
       if (typeof cell.value === 'string' && cell.value.startsWith('=')) {
-        // resolvedValueが未設定の場合、数式を評価
         if (cell.resolvedValue === undefined) {
           cell.resolvedValue = this.evaluateFormula(cell.value, allTables, currentTableIndex);
           cell.displayValue = cell.resolvedValue;
@@ -317,33 +326,20 @@ export class FormulaEngine {
   }
 
   formatValue(value, format) {
-    if (!format || value == null || typeof value === 'string') {
-      return value;
-    }
-
-    try {
-      if (typeof value === 'number') {
-        // フォーマットパターンを解析
-        const parts = format.split('.');
-        const hasDecimal = parts.length > 1;
-        
-        // 小数点以下の桁数を取得
-        const decimals = hasDecimal ? parts[1].length : 0;
-        
-        // 数値を指定された桁数でフォーマット
-        // Excelの仕様に従い、先頭のスペスパディングは行わない
+    if (value === null || value === undefined) return '';
+    
+    if (typeof value === 'number') {
+      if (!format) {
+        return value.toString();
+      }
+      if (format.includes('.')) {
+        const decimals = format.split('.')[1].length;
         return value.toFixed(decimals);
       }
-
-      if (value instanceof Date) {
-        return value.toISOString().split('T')[0];
-      }
-
-      return value;
-    } catch (error) {
-      console.error('Format error:', error);
-      return '#FORMAT_ERROR';
+      return value.toString();
     }
+    
+    return value.toString();
   }
 
   getDecimalPlaces(format) {
