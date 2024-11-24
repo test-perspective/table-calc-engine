@@ -1,6 +1,16 @@
 export class ExcelFormatter {
   constructor() {
     this.defaultFormat = 'General';
+    this.predefinedFormats = {
+      'Number': '#,##0.00',
+      'Currency': '$#,##0.00',
+      'Date': 'yyyy/mm/dd',
+      'Time': 'hh:mm:ss',
+      'Percentage': '0.00%',
+      'Fraction': '# ??/??',
+      'Scientific': '0.00E+00',
+      'Text': '@'
+    };
   }
 
   format(value, formatPattern) {
@@ -9,7 +19,9 @@ export class ExcelFormatter {
       textColor: null
     };
 
-    if (!formatPattern || formatPattern === 'General') {
+    const actualFormat = this._resolvePredefinedFormat(formatPattern);
+
+    if (!actualFormat || actualFormat === 'General') {
       result.displayValue = this._formatGeneral(value);
       return result;
     }
@@ -20,12 +32,12 @@ export class ExcelFormatter {
     }
 
     try {
-      if (formatPattern.includes(';')) {
-        const formatted = this._handleConditionalFormat(value, formatPattern);
+      if (actualFormat.includes(';')) {
+        const formatted = this._handleConditionalFormat(value, actualFormat);
         result.displayValue = formatted;
         result.textColor = this.lastColor;
       } else {
-        result.displayValue = this._applyFormat(value, formatPattern);
+        result.displayValue = this._applyFormat(value, actualFormat);
       }
       return result;
     } catch (error) {
@@ -35,25 +47,43 @@ export class ExcelFormatter {
   }
 
   _applyFormat(value, format) {
-    if (typeof value !== 'number') {
-      return value.toString();
+    if (value === '' || value === null || value === undefined) {
+      return '';
     }
 
-    const cleanFormat = format.trim();
+    const numValue = Number(value);
+    if (isNaN(numValue) && format !== '@') return String(value);
 
-    if (cleanFormat.includes('¥')) {
-      return `¥${this._formatNumber(value, cleanFormat.replace('¥', ''))}`;
+    if (format === '@') {
+      return value === 0 ? '' : String(value);
     }
 
-    if (cleanFormat.match(/0\.0+E\+00/)) {
-      return this._formatScientific(value);
+    if (format.includes('E+00')) {
+      const [mantissa, exponent] = numValue.toExponential(2).split('e');
+      const expNum = Number(exponent);
+      return `${Number(mantissa).toFixed(2)}E${expNum >= 0 ? '+' : ''}${String(Math.abs(expNum)).padStart(2, '0')}`;
     }
 
-    if (cleanFormat.includes('%')) {
-      return this._formatPercent(value, cleanFormat);
+    if (format.includes('%')) {
+      const percentValue = numValue * 100;
+      const decimalPlaces = (format.match(/0\.?(0+)?%/)?.[1] || '').length || 0;
+      return `${percentValue.toFixed(decimalPlaces)}%`;
     }
 
-    return this._formatNumber(value, cleanFormat);
+    if (format.includes('$')) {
+      const places = (format.match(/0\.?(0+)?/)?.[1] || '').length || 0;
+      const formattedNum = this._formatWithThousandSeparator(numValue.toFixed(places));
+      return `$${formattedNum}`;
+    }
+
+    if (format.includes('#') || format.includes('0')) {
+      const decimalPlaces = (format.match(/[#0]\.([#0]+)/)?.[1] || '').length || 0;
+      const useThousandSeparator = format.includes(',');
+      const fixedNum = numValue.toFixed(decimalPlaces);
+      return useThousandSeparator ? this._formatWithThousandSeparator(fixedNum) : fixedNum;
+    }
+
+    return this._formatGeneral(value);
   }
 
   _formatScientific(value) {
@@ -136,14 +166,24 @@ export class ExcelFormatter {
   }
 
   _formatGeneral(value) {
-    if (this._isError(value)) return value.toString();
-    if (typeof value === 'number') {
-      return value.toString();
+    if (value === '' || value === null || value === undefined) {
+      return '';
     }
-    return value.toString();
+    const numValue = Number(value);
+    return isNaN(numValue) ? String(value) : String(numValue);
   }
 
   _isError(value) {
     return typeof value === 'string' && value.startsWith('#');
+  }
+
+  _resolvePredefinedFormat(formatPattern) {
+    return this.predefinedFormats[formatPattern] || formatPattern;
+  }
+
+  _formatWithThousandSeparator(numStr) {
+    const [intPart, decPart] = numStr.split('.');
+    const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return decPart ? `${formattedInt}.${decPart}` : formattedInt;
   }
 } 

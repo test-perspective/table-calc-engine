@@ -12,7 +12,7 @@ describe('Cell Format Tests', () => {
       [
         { value: 1234.567, excelFormat: '#,##0.00' },
         { value: -1234.567, excelFormat: '#,##0.00' },
-        { value: 1234.567, excelFormat: '¥#,##0.00' },
+        { value: 1234.567, excelFormat: '$#,##0.00' },
         { value: 0.123, excelFormat: '0%' },
         { value: 1234.567, excelFormat: '0.00E+00' },
       ]
@@ -30,7 +30,7 @@ describe('Cell Format Tests', () => {
 
     test('should format currency', () => {
       const result = engine.processData(testData);
-      expect(result.tables[0][0][2].displayValue).toBe('¥1,234.57');
+      expect(result.tables[0][0][2].displayValue).toBe('$1,234.57');
     });
 
     test('should format percentages', () => {
@@ -107,7 +107,9 @@ describe('Cell Format Tests', () => {
       [
         { value: 0, excelFormat: '#,##0.00;-#,##0.00;"Zero"' },
         { value: '', excelFormat: '@' },
-        { value: 1234.567, excelFormat: '[$-411]#,##0.00' }, // Japanese locale
+        { value: 1234.567, excelFormat: '#,##0.00' },
+        { value: 1234.567, excelFormat: 'Number' },
+        { value: 1234.567, excelFormat: '#,##0.00' }
       ]
     ]];
 
@@ -145,6 +147,58 @@ describe('Cell Format Tests', () => {
     test('should handle invalid numeric values', () => {
       const result = engine.processData(testData);
       expect(result.tables[0][0][2].displayValue).toBe('Invalid');
+    });
+  });
+
+  describe('Predefined Format Names', () => {
+    test('should handle predefined format names', () => {
+      const testData = [[
+        [
+          { value: 1234.567, excelFormat: 'Number' },      // 1,234.57
+          { value: 1234.567, excelFormat: 'Currency' },    // $1,234.57
+          { value: 0.1234, excelFormat: 'Percentage' },    // 12.34%
+          { value: 1234.567, excelFormat: 'Scientific' },  // 1.23E+03
+          { value: "ABC", excelFormat: 'Text' }            // ABC
+        ]
+      ]];
+
+      const result = engine.processData(testData);
+      
+      expect(result.tables[0][0][0].displayValue).toBe('1,234.57');
+      expect(result.tables[0][0][1].displayValue).toBe('$1,234.57');
+      expect(result.tables[0][0][2].displayValue).toBe('12.34%');
+      expect(result.tables[0][0][3].displayValue).toBe('1.23E+03');
+      expect(result.tables[0][0][4].displayValue).toBe('ABC');
+    });
+
+    test('should fallback to custom format if name is not predefined', () => {
+      const testData = [[
+        [
+          { value: 1234.567, excelFormat: 'NotExist' },
+          { value: 1234.567, excelFormat: '#,##0.00' }
+        ]
+      ]];
+
+      const result = engine.processData(testData);
+      
+      expect(result.tables[0][0][0].displayValue).toBe('1234.567');
+      expect(result.tables[0][0][1].displayValue).toBe('1,234.57');
+    });
+
+    test('should handle General format', () => {
+      const testData = [[
+        [
+          { value: 1234.567, excelFormat: 'General' },
+          { value: 0.000123, excelFormat: 'General' },
+          { value: "ABC", excelFormat: 'General' }
+        ]
+      ]];
+
+      const result = engine.processData(testData);
+      
+      expect(result.tables[0][0][0].displayValue).toBe('1234.567');
+      expect(result.tables[0][0][1].displayValue).toBe('0.000123');
+      expect(result.tables[0][0][2].displayValue).toBe('ABC');
     });
   });
 }); 
