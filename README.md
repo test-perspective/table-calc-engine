@@ -15,6 +15,51 @@ Excel-like formula calculation engine implemented in JavaScript.
   - More functions coming soon...
 - Number formatting (e.g., ###.##)
 - Error handling (#REF!, #NAME?, #DIV/0!, #ERROR!, #CIRCULAR!)
+- Cross-table references
+  - Reference cells between different tables (e.g., 0!A1, 1!B2)
+  - Support range references across tables (e.g., 1!A1:B2)
+  - Case-insensitive references (1!a1 equals 1!A1)
+  - Absolute references with $ symbol (e.g., 1!$A$1)
+  - Complex calculations across tables (e.g., SUM(0!A1:B2) + SUM(1!A1:B2))
+
+## Cross-Table References
+
+The engine supports referencing cells and ranges between different tables using table IDs.
+
+```javascript
+const data = [
+  [ // table 0
+    [
+      { value: 1 },
+      { value: 2 }
+    ]
+  ],
+  [ // table 1
+    [
+      { value: 10 },
+      { value: 20 }
+    ]
+  ]
+];
+
+const engine = new FormulaEngine();
+
+// Single cell references
+engine.evaluateFormula('=0!A1', data, 0);  // 1
+engine.evaluateFormula('=1!A1', data, 0);  // 10
+
+// Range references
+engine.evaluateFormula('=SUM(0!A1:B1)', data, 0);  // 3
+engine.evaluateFormula('=SUM(1!A1:B1)', data, 0);  // 30
+
+// Complex calculations
+engine.evaluateFormula('=0!A1 + 1!A1', data, 0);  // 11
+engine.evaluateFormula('=SUM(0!A1:B1) + AVERAGE(1!A1:B1)', data, 0);  // 18
+```
+
+Error handling for cross-table references:
+- #REF! - Invalid table ID or cell reference out of range
+- #ERROR! - Invalid table reference format
 
 ## Installation 
 ```bash
