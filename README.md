@@ -18,13 +18,13 @@ Excel-like formula calculation engine implemented in JavaScript.
 
 ## Installation 
 ```bash
-npm install excel-formula-engine
+npm install table-calc-engine
 ```
 
 ## Usage
 
 ```javascript
-import { FormulaEngine } from 'excel-formula-engine';
+import { FormulaEngine } from 'table-calc-engine';
 
 const engine = new FormulaEngine();
 
@@ -89,7 +89,6 @@ Current implementation:
 - Circular reference detection
 
 Upcoming features:
-- Range references (e.g., A1:B3)
 - More Excel functions
 - Advanced formatting options
 - Performance optimizations

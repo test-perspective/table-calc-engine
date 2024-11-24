@@ -8,10 +8,26 @@ export class FormulaEngine {
     this.parser = new FormulaParser();
     this.functions = {
       'SUM': (args, allTables, currentTableIndex) => {
-        const values = this.getFunctionArgValues(args, allTables, currentTableIndex);
-        return ExcelFunctions.SUM(values);
+        let sum = 0;
+        for (const arg of args) {
+          if (arg.type === 'range') {
+            const values = this.getRangeValues(arg.reference, allTables, currentTableIndex);
+            if (values && values.length > 0) {
+              sum += values.reduce((acc, val) => acc + val, 0);
+            }
+          } else if (arg.type === 'cell') {
+            const value = this.getCellValue(arg.reference, allTables, currentTableIndex);
+            const numValue = Number(value);
+            if (!isNaN(numValue)) {
+              sum += numValue;
+            }
+          } else if (arg.type === 'literal') {
+            sum += arg.value;
+          }
+        }
+        return sum;
       },
-      'AVERAGE': (args, allTables, currentTableIndex) => {
+      'AVERAGE': (args, allTables, currentTableIndex) => { 
         const values = this.getFunctionArgValues(args, allTables, currentTableIndex);
         return ExcelFunctions.AVERAGE(values);
       },
@@ -243,50 +259,48 @@ export class FormulaEngine {
 
   getRangeValues(range, allTables, currentTableIndex) {
     try {
-      const { start, end } = CellReference.parseRange(range);
-      const table = allTables[currentTableIndex];
+      const normalizedRange = range.replace(/[a-z]+/g, match => match.toUpperCase());
+      const [startRef, endRef] = normalizedRange.split(':');
+      const start = this.parseCellReference(startRef);
+      const end = this.parseCellReference(endRef);
       
+      if (!start || !end) {
+        return null;
+      }
+
+      const table = allTables[currentTableIndex];
       const values = [];
-      for (let row = start.row; row <= end.row; row++) {
-        for (let col = start.column; col <= end.column; col++) {
+
+      for (let row = Math.min(start.row, end.row); row <= Math.max(start.row, end.row); row++) {
+        for (let col = Math.min(start.col, end.col); col <= Math.max(start.col, end.col); col++) {
           if (table?.[row]?.[col]) {
             const cell = table[row][col];
-            const value = typeof cell.value === 'string' && cell.value.startsWith('=')
-              ? cell.resolvedValue
-              : cell.value;
-            values.push(value);
+            const value = cell.resolvedValue !== undefined ? cell.resolvedValue : cell.value;
+            const numValue = Number(value);
+            if (!isNaN(numValue)) {
+              values.push(numValue);
+            }
           }
         }
       }
+      
       return values;
     } catch (error) {
       console.error('Error in getRangeValues:', error);
-      throw error;
+      return null;
     }
   }
 
-  getCellValue(reference, allTables, currentTableIndex) {
-    try {
-      const { row, column } = CellReference.parse(reference);
-      const table = allTables[currentTableIndex];
-      
-      if (!table?.[row]?.[column]) {
-        return '#REF!';
-      }
+  getCellValue(ref, data, sheetIndex) {
+    const cellRef = this.parseCellReference(ref);
+    if (!cellRef) {
+      return '#REF!';
+    }
 
-      const cell = table[row][column];
-      
-      if (typeof cell.value === 'string' && cell.value.startsWith('=')) {
-        if (cell.resolvedValue === undefined) {
-          cell.resolvedValue = this.evaluateFormula(cell.value, allTables, currentTableIndex);
-          cell.displayValue = cell.resolvedValue;
-        }
-        return cell.resolvedValue;
-      }
-      
-      return cell.value;
-    } catch (error) {
-      console.error('Error in getCellValue:', error);
+    try {
+      const cell = data[sheetIndex][cellRef.row][cellRef.col];
+      return cell.resolvedValue !== undefined ? cell.resolvedValue : cell.value;
+    } catch (e) {
       return '#REF!';
     }
   }
@@ -345,5 +359,48 @@ export class FormulaEngine {
   getDecimalPlaces(format) {
     const match = format.match(/\.(\d+)/);
     return match ? match[1].length : 0;
+  }
+
+  parseCellReference(ref) {
+    const match = ref.match(/^(\$?)([A-Za-z]+)(\$?)(\d+)$/i);
+    if (!match) {
+      return null;
+    }
+
+    const [_, colAbs, colStr, rowAbs, rowStr] = match;
+    
+    let column = 0;
+    const upperColStr = colStr.toUpperCase();
+    for (let i = 0; i < upperColStr.length; i++) {
+      column = column * 26 + (upperColStr.charCodeAt(i) - 'A'.charCodeAt(0));
+    }
+
+    return {
+      col: column,
+      row: parseInt(rowStr) - 1,
+      isAbsoluteCol: colAbs === '$',
+      isAbsoluteRow: rowAbs === '$'
+    };
+  }
+
+  parseRange(range) {
+    const [start, end] = range.split(':');
+    const startCell = this.parseCellReference(start);
+    const endCell = this.parseCellReference(end);
+
+    if (!startCell || !endCell) {
+      return null;
+    }
+
+    return {
+      startCol: startCell.col,
+      startRow: startCell.row,
+      endCol: endCell.col,
+      endRow: endCell.row,
+      isAbsoluteStartCol: startCell.isAbsoluteCol,
+      isAbsoluteStartRow: startCell.isAbsoluteRow,
+      isAbsoluteEndCol: endCell.isAbsoluteCol,
+      isAbsoluteEndRow: endCell.isAbsoluteRow
+    };
   }
 } 
