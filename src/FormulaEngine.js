@@ -11,12 +11,14 @@ export class FormulaEngine {
         let sum = 0;
         for (const arg of args) {
           if (arg.type === 'range') {
-            const values = this.getRangeValues(arg.reference, allTables, currentTableIndex);
+            const tableIndex = arg.tableId !== undefined ? arg.tableId : currentTableIndex;
+            const values = this.getRangeValues(arg.reference, allTables, tableIndex);
             if (values && values.length > 0) {
               sum += values.reduce((acc, val) => acc + val, 0);
             }
           } else if (arg.type === 'cell') {
-            const value = this.getCellValue(arg.reference, allTables, currentTableIndex);
+            const tableIndex = arg.tableId !== undefined ? arg.tableId : currentTableIndex;
+            const value = this.getCellValue(arg.reference, allTables, tableIndex);
             const numValue = Number(value);
             if (!isNaN(numValue)) {
               sum += numValue;
@@ -27,9 +29,34 @@ export class FormulaEngine {
         }
         return sum;
       },
-      'AVERAGE': (args, allTables, currentTableIndex) => { 
-        const values = this.getFunctionArgValues(args, allTables, currentTableIndex);
-        return ExcelFunctions.AVERAGE(values);
+      'AVERAGE': (args, allTables, currentTableIndex) => {
+        try {
+          const values = [];
+          
+          for (const arg of args) {
+            if (arg.type === 'range') {
+              const tableIndex = arg.tableId !== undefined ? arg.tableId : currentTableIndex;
+              const rangeValues = this.getRangeValues(arg.reference, allTables, tableIndex);
+              if (rangeValues) {
+                values.push(...rangeValues);
+              }
+            } else if (arg.type === 'cell') {
+              const tableIndex = arg.tableId !== undefined ? arg.tableId : currentTableIndex;
+              const value = this.getCellValue(arg.reference, allTables, tableIndex);
+              const numValue = Number(value);
+              if (!isNaN(numValue)) {
+                values.push(numValue);
+              }
+            } else if (arg.type === 'literal') {
+              values.push(arg.value);
+            }
+          }
+
+          return ExcelFunctions.AVERAGE(values);
+        } catch (error) {
+          console.error('Error in AVERAGE function:', error);
+          return '#ERROR!';
+        }
       },
       'COUNT': (args, allTables, currentTableIndex) => {
         const values = this.getFunctionArgValues(args, allTables, currentTableIndex);
@@ -191,47 +218,52 @@ export class FormulaEngine {
   evaluateAst(ast, allTables, currentTableIndex) {
     if (!ast) return null;
 
-    switch (ast.type) {
-      case 'function':
-        if (!(ast.name in this.functions)) {
-          throw new Error(`Unknown function: ${ast.name}`);
-        }
-        return this.functions[ast.name](ast.arguments, allTables, currentTableIndex);
+    try {
+      switch (ast.type) {
+        case 'operation':
+          const left = this.evaluateAst(ast.left, allTables, currentTableIndex);
+          const right = this.evaluateAst(ast.right, allTables, currentTableIndex);
+          
+          // 数値に変換
+          const leftNum = Number(left);
+          const rightNum = Number(right);
+          
+          if (isNaN(leftNum) || isNaN(rightNum)) {
+            return '#ERROR!';
+          }
 
-      case 'operation':
-        const left = this.evaluateAst(ast.left, allTables, currentTableIndex);
-        const right = this.evaluateAst(ast.right, allTables, currentTableIndex);
-        
-        const leftNum = Number(left);
-        const rightNum = Number(right);
-        
-        if (isNaN(leftNum) || isNaN(rightNum)) {
-          return '#ERROR!';
-        }
+          switch (ast.operator) {
+            case '+': return leftNum + rightNum;
+            case '-': return leftNum - rightNum;
+            case '*': return leftNum * rightNum;
+            case '/': return rightNum === 0 ? '#DIV/0!' : leftNum / rightNum;
+            case '^': return Math.pow(leftNum, rightNum);
+            default: throw new Error(`Unknown operator: ${ast.operator}`);
+          }
 
-        switch (ast.operator) {
-          case '+': return leftNum + rightNum;
-          case '-': return leftNum - rightNum;
-          case '*': return leftNum * rightNum;
-          case '/':
-            if (rightNum === 0) return '#DIV/0!';
-            return leftNum / rightNum;
-          case '^': return Math.pow(leftNum, rightNum);
-          default:
-            throw new Error(`Unknown operator: ${ast.operator}`);
-        }
+        case 'function':
+          if (!(ast.name in this.functions)) {
+            throw new Error(`Unknown function: ${ast.name}`);
+          }
+          return this.functions[ast.name](ast.arguments, allTables, currentTableIndex);
 
-      case 'cell':
-        return this.getCellValue(ast.reference, allTables, currentTableIndex);
+        case 'cell':
+          const tableIndex = ast.tableId !== undefined ? ast.tableId : currentTableIndex;
+          return this.getCellValue(ast.reference, allTables, tableIndex);
 
-      case 'range':
-        return this.getRangeValues(ast.reference, allTables, currentTableIndex);
+        case 'range':
+          const rangeTableIndex = ast.tableId !== undefined ? ast.tableId : currentTableIndex;
+          return this.getRangeValues(ast.reference, allTables, rangeTableIndex);
 
-      case 'literal':
-        return ast.value;
+        case 'literal':
+          return ast.value;
 
-      default:
-        throw new Error(`Unknown AST type: ${ast.type}`);
+        default:
+          throw new Error(`Unknown AST type: ${ast.type}`);
+      }
+    } catch (error) {
+      console.error('Error in evaluateAst:', error);
+      return '#ERROR!';
     }
   }
 
@@ -257,9 +289,14 @@ export class FormulaEngine {
     }
   }
 
-  getRangeValues(range, allTables, currentTableIndex) {
+  getRangeValues(range, data, tableIndex) {
     try {
-      const normalizedRange = range.replace(/[a-z]+/g, match => match.toUpperCase());
+      if (tableIndex >= data.length) {
+        return null;
+      }
+
+      const table = data[tableIndex];
+      const normalizedRange = range.replace(/([a-z]+)/gi, match => match.toUpperCase());
       const [startRef, endRef] = normalizedRange.split(':');
       const start = this.parseCellReference(startRef);
       const end = this.parseCellReference(endRef);
@@ -268,9 +305,7 @@ export class FormulaEngine {
         return null;
       }
 
-      const table = allTables[currentTableIndex];
       const values = [];
-
       for (let row = Math.min(start.row, end.row); row <= Math.max(start.row, end.row); row++) {
         for (let col = Math.min(start.col, end.col); col <= Math.max(start.col, end.col); col++) {
           if (table?.[row]?.[col]) {
@@ -291,14 +326,18 @@ export class FormulaEngine {
     }
   }
 
-  getCellValue(ref, data, sheetIndex) {
+  getCellValue(ref, data, tableIndex) {
+    if (tableIndex >= data.length) {
+      return '#REF!';
+    }
+
     const cellRef = this.parseCellReference(ref);
     if (!cellRef) {
       return '#REF!';
     }
 
     try {
-      const cell = data[sheetIndex][cellRef.row][cellRef.col];
+      const cell = data[tableIndex][cellRef.row][cellRef.col];
       return cell.resolvedValue !== undefined ? cell.resolvedValue : cell.value;
     } catch (e) {
       return '#REF!';

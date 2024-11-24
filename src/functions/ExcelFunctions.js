@@ -7,10 +7,24 @@ export class ExcelFunctions {
   }
 
   static AVERAGE(values) {
-    if (values.length === 0) return '#DIV/0!';
-    const sum = this.SUM(values);
-    if (typeof sum !== 'number') return sum;
-    return sum / values.length;
+    if (!Array.isArray(values) || values.length === 0) {
+      return 0;
+    }
+
+    // 数値のみをフィルタリング
+    const numbers = values.filter(value => 
+      typeof value === 'number' && !isNaN(value)
+    );
+
+    if (numbers.length === 0) {
+      return 0;
+    }
+
+    // 合計を計算
+    const sum = numbers.reduce((acc, val) => acc + val, 0);
+    
+    // 平均を返す
+    return sum / numbers.length;
   }
 
   static COUNT(values) {
