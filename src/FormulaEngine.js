@@ -2,6 +2,7 @@ import { FormulaParser } from './parser/FormulaParser.js';
 import { ExcelFunctions } from './functions/ExcelFunctions.js';
 import { CellReference } from '../utils/CellReference.js';
 import { FormulaError } from './types/index.js';
+import { ExcelFormatter } from './formatter/ExcelFormatter';
 
 export class FormulaEngine {
   constructor() {
@@ -54,7 +55,6 @@ export class FormulaEngine {
 
           return ExcelFunctions.AVERAGE(values);
         } catch (error) {
-          console.error('Error in AVERAGE function:', error);
           return '#ERROR!';
         }
       },
@@ -71,6 +71,7 @@ export class FormulaEngine {
         return ExcelFunctions.MIN(values);
       }
     };
+    this.formatter = new ExcelFormatter();
   }
 
   getFunctionArgValues(args, allTables, currentTableIndex) {
@@ -85,63 +86,71 @@ export class FormulaEngine {
         }
       }).flat();
     } catch (error) {
-      console.error('Error in getFunctionArgValues:', error);
       throw error;
     }
   }
 
   processData(data) {
-    console.log('Starting processData');
     const result = {
-      tables: JSON.parse(JSON.stringify(data)),
+      tables: Array.isArray(data) ? data : [data.tables],
       formulas: []
     };
 
     result.tables.forEach((table, tableIndex) => {
-      table.forEach((rows, sheetIndex) => {
+      table.forEach((rows, rowIndex) => {
         rows.forEach((cell, colIndex) => {
-          const originalCell = { ...cell };
-
-          if (typeof cell.value === 'string' && cell.value.startsWith('=')) {
-            try {
-              const formula = cell.value;
-              const resolvedValue = this.evaluateFormula(formula, result.tables, tableIndex);
-              
-              cell.resolvedValue = resolvedValue;
-              cell.displayValue = this.formatValue(resolvedValue, cell.excelFormat);
-              cell.resolved = true;
-
-              result.formulas.push({
-                tableIndex,
-                sheetIndex,
-                colIndex,
-                formula,
-                resolvedValue,
-                displayValue: cell.displayValue,
-                excelFormat: cell.excelFormat,
-                macroId: originalCell.macroId,
-                style: originalCell.style,
-                metadata: originalCell.metadata,
-                validation: originalCell.validation,
-                comment: originalCell.comment,
-                originalCell: originalCell
-              });
-            } catch (error) {
-              console.error('Formula evaluation error:', error);
-              cell.resolvedValue = '#ERROR!';
-              cell.displayValue = '#ERROR!';
-              cell.resolved = false;
-            }
-          } else {
-            cell.resolvedValue = cell.value;
-            cell.displayValue = this.formatValue(cell.value, cell.excelFormat);
+          const originalValue = cell.value;
+          
+          // 数式の場合
+          if (typeof originalValue === 'string' && originalValue.startsWith('=')) {
+            const resolvedValue = this.evaluateFormula(originalValue, result.tables, tableIndex);
             cell.resolved = true;
+            cell.resolvedValue = this._convertToNumber(resolvedValue);
+            
+            // フォーマット用の値を計算
+            const formatValue = cell.excelFormat && cell.excelFormat.includes('%') 
+              ? cell.resolvedValue / 100 
+              : cell.resolvedValue;
+
+            // フォーマットの適用
+            if (cell.excelFormat) {
+              const formatted = this.formatter.format(formatValue, cell.excelFormat);
+              cell.displayValue = formatted.displayValue;
+              if (formatted.textColor) {
+                cell.textColor = formatted.textColor;
+              }
+            } else {
+              cell.displayValue = String(formatValue);
+            }
+
+            // formulasに追加（計算結果を含む全てのプロパティを含める）
+            result.formulas.push({
+              table: tableIndex,
+              row: rowIndex,
+              col: colIndex,
+              ...cell  // formulaプロパティを追加せず、セルの既存プロパティのみを使用
+            });
+            
+          } else {
+            // 通常の値の場合
+            cell.resolved = true;
+            cell.resolvedValue = originalValue;
+            
+            // フォーマットの適用
+            if (cell.excelFormat) {
+              const formatted = this.formatter.format(originalValue, cell.excelFormat);
+              cell.displayValue = formatted.displayValue;
+              if (formatted.textColor) {
+                cell.textColor = formatted.textColor;
+              }
+            } else {
+              cell.displayValue = String(originalValue);
+            }
           }
         });
       });
     });
 
-    console.log('ProcessData completed successfully');
     return result;
   }
 
@@ -210,7 +219,6 @@ export class FormulaEngine {
       visited.delete(formulaKey);
       return result;
     } catch (error) {
-      console.error('Formula evaluation error:', error);
       return '#ERROR!';
     }
   }
@@ -262,7 +270,6 @@ export class FormulaEngine {
           throw new Error(`Unknown AST type: ${ast.type}`);
       }
     } catch (error) {
-      console.error('Error in evaluateAst:', error);
       return '#ERROR!';
     }
   }
@@ -284,7 +291,6 @@ export class FormulaEngine {
         return isNaN(num) ? sum : sum + num;
       }, 0);
     } catch (error) {
-      console.error('Error in SUM function:', error);
       return '#ERROR!';
     }
   }
@@ -321,7 +327,6 @@ export class FormulaEngine {
       
       return values;
     } catch (error) {
-      console.error('Error in getRangeValues:', error);
       return null;
     }
   }
@@ -381,18 +386,8 @@ export class FormulaEngine {
   formatValue(value, format) {
     if (value === null || value === undefined) return '';
     
-    if (typeof value === 'number') {
-      if (!format) {
-        return value.toString();
-      }
-      if (format.includes('.')) {
-        const decimals = format.split('.')[1].length;
-        return value.toFixed(decimals);
-      }
-      return value.toString();
-    }
-    
-    return value.toString();
+    const formatted = this.formatter.format(value, format);
+    return formatted.displayValue;
   }
 
   getDecimalPlaces(format) {
@@ -441,5 +436,13 @@ export class FormulaEngine {
       isAbsoluteEndCol: endCell.isAbsoluteCol,
       isAbsoluteEndRow: endCell.isAbsoluteRow
     };
+  }
+
+  // 数値変換のヘルパーメソッド
+  _convertToNumber(value) {
+    if (typeof value === 'string' && !isNaN(value) && value.trim() !== '') {
+      return Number(value);
+    }
+    return value;
   }
 } 

@@ -13,7 +13,7 @@ describe('FormulaEngine Format Tests', () => {
         [
           { value: 1, excelFormat: null },
           { value: 2, excelFormat: null },
-          { value: "=SUM(2,3)", excelFormat: "###.##" }
+          { value: "=SUM(2,3)", excelFormat: "###.##", macroId: "aaaaa" }
         ]
       ]
     ];
@@ -39,7 +39,21 @@ describe('FormulaEngine Format Tests', () => {
       resolvedValue: 5,
       displayValue: "5.00",
       excelFormat: "###.##",
-      resolved: true
+      resolved: true,
+      macroId: "aaaaa"
+    });
+
+    expect(result.formulas).toHaveLength(1);
+    expect(result.formulas[0]).toEqual({
+      table: 0,
+      row: 0,
+      col: 2,
+      value: "=SUM(2,3)",
+      excelFormat: "###.##",
+      macroId: "aaaaa",
+      displayValue: "5.00",
+      resolved: true,
+      resolvedValue: 5
     });
   });
 }); 

@@ -2,7 +2,7 @@ export default {
   transform: {},
   testEnvironment: 'node',
   verbose: true,
-  collectCoverage: true,
+  collectCoverage: false,
   coverageDirectory: 'coverage',
   coverageProvider: 'v8',
   testMatch: [
