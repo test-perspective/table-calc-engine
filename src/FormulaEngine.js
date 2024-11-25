@@ -3,6 +3,7 @@ import { ExcelFunctions } from './functions/ExcelFunctions.js';
 import { CellReference } from './utils/CellReference.js';
 import { FormulaError } from './types/index.js';
 import { ExcelFormatter } from './formatter/ExcelFormatter.js';
+import { ErrorHandler } from './utils/ErrorHandler.js';
 
 export class FormulaEngine {
   constructor() {
@@ -444,5 +445,40 @@ export class FormulaEngine {
       return Number(value);
     }
     return value;
+  }
+
+  _evaluateBasicFormula(expression, table) {
+    // ゼロ除算チェック
+    if (expression.includes('/0')) {
+      return ErrorHandler.DIV_ZERO;
+    }
+
+    try {
+      const parts = expression.split(/([+\-*\/])/);
+      const evaluatedParts = parts.map(part => {
+        const trimmed = part.trim();
+        const cellRef = this._parseCellReference(trimmed);
+        if (cellRef) {
+          if (!table[cellRef.row] || !table[cellRef.row][cellRef.col]) {
+            return ErrorHandler.REF;
+          }
+          const value = table[cellRef.row][cellRef.col].value;
+          if (ErrorHandler.isError(value)) {
+            return value;
+          }
+          return value;
+        }
+        return trimmed;
+      });
+
+      // エラーが含まれているかチェック
+      if (evaluatedParts.some(part => ErrorHandler.isError(part))) {
+        return evaluatedParts.find(part => ErrorHandler.isError(part));
+      }
+
+      return this._evaluateExpression(evaluatedParts);
+    } catch (error) {
+      return ErrorHandler.ERROR;
+    }
   }
 } 
