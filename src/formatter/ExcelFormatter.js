@@ -1,6 +1,5 @@
 export class ExcelFormatter {
   constructor() {
-    this.defaultFormat = 'General';
     this.predefinedFormats = {
       'Number': '#,##0.00',
       'Currency': '$#,##0.00',
@@ -84,38 +83,6 @@ export class ExcelFormatter {
     }
 
     return this._formatGeneral(value);
-  }
-
-  _formatScientific(value) {
-    const exponential = value.toExponential(2);
-    const [mantissa, exponent] = exponential.split('e');
-    const absExponent = Math.abs(parseInt(exponent)).toString().padStart(2, '0');
-    return `${mantissa}E+${absExponent}`;
-  }
-
-  _formatNumber(value, format) {
-    const isNegative = value < 0;
-    const absValue = Math.abs(value);
-    
-    const useThousandSeparator = format.includes('#,##') || format.includes('0,00');
-    
-    const decimalPlaces = (format.split('.')[1] || '').replace(/[^0#]/g, '').length;
-    
-    let result = absValue.toFixed(decimalPlaces);
-    
-    if (useThousandSeparator) {
-      const parts = result.split('.');
-      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-      result = parts.join('.');
-    }
-
-    return isNegative ? `-${result}` : result;
-  }
-
-  _formatPercent(value, format) {
-    const percentValue = value * 100;
-    const decimalPlaces = (format.match(/0\.?(0+)?%/)?.[1] || '').length || 0;
-    return `${percentValue.toFixed(decimalPlaces)}%`;
   }
 
   _handleConditionalFormat(value, format) {

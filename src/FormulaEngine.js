@@ -1,11 +1,6 @@
 import { FormulaParser } from './parsers/FormulaParser.js';
 import { ExcelFunctions } from './functions/ExcelFunctions.js';
-import { CellReference } from './utils/CellReference.js';
-import { FormulaError } from './types/index.js';
 import { ExcelFormatter } from './formatter/ExcelFormatter.js';
-import { ErrorHandler } from './utils/ErrorHandler.js';
-import { CellParser } from './parsers/CellParser.js';
-import { BasicEvaluator } from './evaluators/BasicEvaluator.js';
 
 export class FormulaEngine {
   constructor() {
@@ -36,7 +31,7 @@ export class FormulaEngine {
       'AVERAGE': (args, allTables, currentTableIndex) => {
         try {
           const values = [];
-          
+
           for (const arg of args) {
             if (arg.type === 'range') {
               const tableIndex = arg.tableId !== undefined ? arg.tableId : currentTableIndex;

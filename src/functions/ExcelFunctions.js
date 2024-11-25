@@ -1,18 +1,11 @@
 export class ExcelFunctions {
-  static SUM(values) {
-    return values.reduce((sum, value) => {
-      const num = Number(value);
-      return isNaN(num) ? sum : sum + num;
-    }, 0);
-  }
-
   static AVERAGE(values) {
     if (!Array.isArray(values) || values.length === 0) {
       return 0;
     }
 
     // 数値のみをフィルタリング
-    const numbers = values.filter(value => 
+    const numbers = values.filter(value =>
       typeof value === 'number' && !isNaN(value)
     );
 
@@ -22,7 +15,7 @@ export class ExcelFunctions {
 
     // 合計を計算
     const sum = numbers.reduce((acc, val) => acc + val, 0);
-    
+
     // 平均を返す
     return sum / numbers.length;
   }
@@ -49,16 +42,4 @@ export class ExcelFunctions {
     if (numbers.length === 0) return '#ERROR!';
     return Math.min(...numbers);
   }
-
-  static IF(condition, trueValue, falseValue) {
-    return condition ? trueValue : falseValue;
-  }
-
-  static TODAY() {
-    return new Date();
-  }
-
-  static DATE(year, month, day) {
-    return new Date(year, month - 1, day);
-  }
-} 
+}
