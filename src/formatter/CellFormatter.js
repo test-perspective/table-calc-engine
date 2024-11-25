@@ -4,6 +4,14 @@ export class CellFormatter {
   }
 
   processCell(cell, tableIndex, rowIndex, colIndex) {
+    // カンマを含む数値定数の場合、カンマを除去して数値に変換
+    if (typeof cell.value === 'string' && !cell.value.startsWith('=')) {
+      const cleanValue = cell.value.replace(/,/g, '');
+      if (!isNaN(cleanValue) && cleanValue.trim() !== '') {
+        cell.value = Number(cleanValue);
+      }
+    }
+    
     const originalValue = cell.value;
     
     // 数式の場合
