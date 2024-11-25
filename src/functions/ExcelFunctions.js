@@ -11,32 +11,25 @@ export class ExcelFunctions {
   }
 
   SUM(args, allTables, currentTableIndex) {
-    let sum = 0;
-    for (const arg of args) {
-      if (arg.type === 'range') {
-        const tableIndex = arg.tableId !== undefined ? arg.tableId : currentTableIndex;
-        const values = this.engine.getRangeValues(arg.reference, allTables, tableIndex);
-        if (values && values.length > 0) {
-          sum += values.reduce((acc, val) => acc + val, 0);
-        }
-      } else if (arg.type === 'cell') {
-        const tableIndex = arg.tableId !== undefined ? arg.tableId : currentTableIndex;
-        const value = this.engine.getCellValue(arg.reference, allTables, tableIndex);
-        const numValue = Number(value);
-        if (!isNaN(numValue)) {
-          sum += numValue;
-        }
-      } else if (arg.type === 'literal') {
-        sum += arg.value;
-      }
+    try {
+      const values = this.getFunctionArgValues(args, allTables, currentTableIndex);
+      const numbers = values
+        .map(v => Number(v))
+        .filter(n => !isNaN(n));
+      return numbers.reduce((sum, val) => sum + val, 0);
+    } catch (error) {
+      return '#ERROR!';
     }
-    return sum;
   }
 
   AVERAGE(args, allTables, currentTableIndex) {
     try {
       const values = this.getFunctionArgValues(args, allTables, currentTableIndex);
-      return ExcelFunctions.AVERAGE(values);
+      const numbers = values
+        .map(v => Number(v))
+        .filter(n => !isNaN(n));
+      if (numbers.length === 0) return 0;
+      return numbers.reduce((sum, val) => sum + val, 0) / numbers.length;
     } catch (error) {
       return '#ERROR!';
     }
@@ -45,7 +38,10 @@ export class ExcelFunctions {
   COUNT(args, allTables, currentTableIndex) {
     try {
       const values = this.getFunctionArgValues(args, allTables, currentTableIndex);
-      return ExcelFunctions.COUNT(values);
+      return values.filter(value => 
+        typeof value === 'number' || 
+        (typeof value === 'string' && !isNaN(value))
+      ).length;
     } catch (error) {
       return '#ERROR!';
     }
@@ -54,7 +50,11 @@ export class ExcelFunctions {
   MAX(args, allTables, currentTableIndex) {
     try {
       const values = this.getFunctionArgValues(args, allTables, currentTableIndex);
-      return ExcelFunctions.MAX(values);
+      const numbers = values
+        .map(v => Number(v))
+        .filter(n => !isNaN(n));
+      if (numbers.length === 0) return '#ERROR!';
+      return Math.max(...numbers);
     } catch (error) {
       return '#ERROR!';
     }
@@ -63,7 +63,11 @@ export class ExcelFunctions {
   MIN(args, allTables, currentTableIndex) {
     try {
       const values = this.getFunctionArgValues(args, allTables, currentTableIndex);
-      return ExcelFunctions.MIN(values);
+      const numbers = values
+        .map(v => Number(v))
+        .filter(n => !isNaN(n));
+      if (numbers.length === 0) return '#ERROR!';
+      return Math.min(...numbers);
     } catch (error) {
       return '#ERROR!';
     }
@@ -81,41 +85,5 @@ export class ExcelFunctions {
         return [arg.value];
       }
     }).flat();
-  }
-
-  static AVERAGE(values) {
-    if (!Array.isArray(values) || values.length === 0) {
-      return 0;
-    }
-    const numbers = values.filter(value =>
-      typeof value === 'number' && !isNaN(value)
-    );
-    if (numbers.length === 0) {
-      return 0;
-    }
-    return numbers.reduce((acc, val) => acc + val, 0) / numbers.length;
-  }
-
-  static COUNT(values) {
-    return values.filter(value => 
-      typeof value === 'number' || 
-      (typeof value === 'string' && !isNaN(value))
-    ).length;
-  }
-
-  static MAX(values) {
-    const numbers = values
-      .map(v => Number(v))
-      .filter(n => !isNaN(n));
-    if (numbers.length === 0) return '#ERROR!';
-    return Math.max(...numbers);
-  }
-
-  static MIN(values) {
-    const numbers = values
-      .map(v => Number(v))
-      .filter(n => !isNaN(n));
-    if (numbers.length === 0) return '#ERROR!';
-    return Math.min(...numbers);
   }
 }
