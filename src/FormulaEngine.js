@@ -5,6 +5,7 @@ import { FormulaError } from './types/index.js';
 import { ExcelFormatter } from './formatter/ExcelFormatter.js';
 import { ErrorHandler } from './utils/ErrorHandler.js';
 import { CellParser } from './parsers/CellParser.js';
+import { BasicEvaluator } from './evaluators/BasicEvaluator.js';
 
 export class FormulaEngine {
   constructor() {
@@ -449,37 +450,7 @@ export class FormulaEngine {
   }
 
   _evaluateBasicFormula(expression, table) {
-    if (expression.includes('/0')) {
-      return ErrorHandler.DIV_ZERO;
-    }
-
-    try {
-      const parts = expression.split(/([+\-*\/])/);
-      const evaluatedParts = parts.map(part => {
-        const trimmed = part.trim();
-        const cellRef = CellParser.parse(trimmed);
-        
-        if (cellRef) {
-          if (!table[cellRef.row] || !table[cellRef.row][cellRef.col]) {
-            return ErrorHandler.REF;
-          }
-          const value = table[cellRef.row][cellRef.col].value;
-          if (ErrorHandler.isError(value)) {
-            return value;
-          }
-          return value;
-        }
-        return trimmed;
-      });
-
-      if (evaluatedParts.some(part => ErrorHandler.isError(part))) {
-        return evaluatedParts.find(part => ErrorHandler.isError(part));
-      }
-
-      return this._evaluateExpression(evaluatedParts);
-    } catch (error) {
-      return ErrorHandler.ERROR;
-    }
+    return BasicEvaluator.evaluate(expression, table);
   }
 
   _calculateSum(range, table) {
