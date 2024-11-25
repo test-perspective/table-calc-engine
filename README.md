@@ -14,6 +14,9 @@ Excel-like formula calculation engine implemented in JavaScript.
   - MIN - Returns smallest value
   - More functions coming soon...
 - Number formatting (e.g., ###.##)
+- Number input support:
+  - Handles numbers with commas (e.g., "1,234.56" is treated as 1234.56)
+  - Supports multiple commas (e.g., "1,234,567.89")
 - Error handling (#REF!, #NAME?, #DIV/0!, #ERROR!, #CIRCULAR!)
 - Cross-table references
   - Reference cells between different tables (e.g., 0!A1, 1!B2)
