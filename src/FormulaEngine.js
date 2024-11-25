@@ -5,87 +5,25 @@ import { ExcelFormatter } from './formatter/ExcelFormatter.js';
 export class FormulaEngine {
   constructor() {
     this.parser = new FormulaParser();
+    this.excelFunctions = new ExcelFunctions(this);
     this.functions = {
       'SUM': (args, allTables, currentTableIndex) => {
-        let sum = 0;
-        for (const arg of args) {
-          if (arg.type === 'range') {
-            const tableIndex = arg.tableId !== undefined ? arg.tableId : currentTableIndex;
-            const values = this.getRangeValues(arg.reference, allTables, tableIndex);
-            if (values && values.length > 0) {
-              sum += values.reduce((acc, val) => acc + val, 0);
-            }
-          } else if (arg.type === 'cell') {
-            const tableIndex = arg.tableId !== undefined ? arg.tableId : currentTableIndex;
-            const value = this.getCellValue(arg.reference, allTables, tableIndex);
-            const numValue = Number(value);
-            if (!isNaN(numValue)) {
-              sum += numValue;
-            }
-          } else if (arg.type === 'literal') {
-            sum += arg.value;
-          }
-        }
-        return sum;
+        return this.excelFunctions.SUM(args, allTables, currentTableIndex);
       },
       'AVERAGE': (args, allTables, currentTableIndex) => {
-        try {
-          const values = [];
-
-          for (const arg of args) {
-            if (arg.type === 'range') {
-              const tableIndex = arg.tableId !== undefined ? arg.tableId : currentTableIndex;
-              const rangeValues = this.getRangeValues(arg.reference, allTables, tableIndex);
-              if (rangeValues) {
-                values.push(...rangeValues);
-              }
-            } else if (arg.type === 'cell') {
-              const tableIndex = arg.tableId !== undefined ? arg.tableId : currentTableIndex;
-              const value = this.getCellValue(arg.reference, allTables, tableIndex);
-              const numValue = Number(value);
-              if (!isNaN(numValue)) {
-                values.push(numValue);
-              }
-            } else if (arg.type === 'literal') {
-              values.push(arg.value);
-            }
-          }
-
-          return ExcelFunctions.AVERAGE(values);
-        } catch (error) {
-          return '#ERROR!';
-        }
+        return this.excelFunctions.AVERAGE(args, allTables, currentTableIndex);
       },
       'COUNT': (args, allTables, currentTableIndex) => {
-        const values = this.getFunctionArgValues(args, allTables, currentTableIndex);
-        return ExcelFunctions.COUNT(values);
+        return this.excelFunctions.COUNT(args, allTables, currentTableIndex);
       },
       'MAX': (args, allTables, currentTableIndex) => {
-        const values = this.getFunctionArgValues(args, allTables, currentTableIndex);
-        return ExcelFunctions.MAX(values);
+        return this.excelFunctions.MAX(args, allTables, currentTableIndex);
       },
       'MIN': (args, allTables, currentTableIndex) => {
-        const values = this.getFunctionArgValues(args, allTables, currentTableIndex);
-        return ExcelFunctions.MIN(values);
+        return this.excelFunctions.MIN(args, allTables, currentTableIndex);
       }
     };
     this.formatter = new ExcelFormatter();
-  }
-
-  getFunctionArgValues(args, allTables, currentTableIndex) {
-    try {
-      return args.map(arg => {
-        if (arg.type === 'range') {
-          return this.getRangeValues(arg.reference, allTables, currentTableIndex);
-        } else if (arg.type === 'cell') {
-          return [this.getCellValue(arg.reference, allTables, currentTableIndex)];
-        } else {
-          return [this.evaluateAst(arg, allTables, currentTableIndex)];
-        }
-      }).flat();
-    } catch (error) {
-      throw error;
-    }
   }
 
   processData(data) {

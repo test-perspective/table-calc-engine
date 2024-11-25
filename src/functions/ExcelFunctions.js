@@ -1,23 +1,92 @@
 export class ExcelFunctions {
+  constructor(engine) {
+    this.engine = engine;
+  }
+
+  SUM(args, allTables, currentTableIndex) {
+    let sum = 0;
+    for (const arg of args) {
+      if (arg.type === 'range') {
+        const tableIndex = arg.tableId !== undefined ? arg.tableId : currentTableIndex;
+        const values = this.engine.getRangeValues(arg.reference, allTables, tableIndex);
+        if (values && values.length > 0) {
+          sum += values.reduce((acc, val) => acc + val, 0);
+        }
+      } else if (arg.type === 'cell') {
+        const tableIndex = arg.tableId !== undefined ? arg.tableId : currentTableIndex;
+        const value = this.engine.getCellValue(arg.reference, allTables, tableIndex);
+        const numValue = Number(value);
+        if (!isNaN(numValue)) {
+          sum += numValue;
+        }
+      } else if (arg.type === 'literal') {
+        sum += arg.value;
+      }
+    }
+    return sum;
+  }
+
+  AVERAGE(args, allTables, currentTableIndex) {
+    try {
+      const values = this.getFunctionArgValues(args, allTables, currentTableIndex);
+      return ExcelFunctions.AVERAGE(values);
+    } catch (error) {
+      return '#ERROR!';
+    }
+  }
+
+  COUNT(args, allTables, currentTableIndex) {
+    try {
+      const values = this.getFunctionArgValues(args, allTables, currentTableIndex);
+      return ExcelFunctions.COUNT(values);
+    } catch (error) {
+      return '#ERROR!';
+    }
+  }
+
+  MAX(args, allTables, currentTableIndex) {
+    try {
+      const values = this.getFunctionArgValues(args, allTables, currentTableIndex);
+      return ExcelFunctions.MAX(values);
+    } catch (error) {
+      return '#ERROR!';
+    }
+  }
+
+  MIN(args, allTables, currentTableIndex) {
+    try {
+      const values = this.getFunctionArgValues(args, allTables, currentTableIndex);
+      return ExcelFunctions.MIN(values);
+    } catch (error) {
+      return '#ERROR!';
+    }
+  }
+
+  getFunctionArgValues(args, allTables, currentTableIndex) {
+    return args.map(arg => {
+      if (arg.type === 'range') {
+        const tableIndex = arg.tableId !== undefined ? arg.tableId : currentTableIndex;
+        return this.engine.getRangeValues(arg.reference, allTables, tableIndex);
+      } else if (arg.type === 'cell') {
+        const tableIndex = arg.tableId !== undefined ? arg.tableId : currentTableIndex;
+        return [this.engine.getCellValue(arg.reference, allTables, tableIndex)];
+      } else if (arg.type === 'literal') {
+        return [arg.value];
+      }
+    }).flat();
+  }
+
   static AVERAGE(values) {
     if (!Array.isArray(values) || values.length === 0) {
       return 0;
     }
-
-    // 数値のみをフィルタリング
     const numbers = values.filter(value =>
       typeof value === 'number' && !isNaN(value)
     );
-
     if (numbers.length === 0) {
       return 0;
     }
-
-    // 合計を計算
-    const sum = numbers.reduce((acc, val) => acc + val, 0);
-
-    // 平均を返す
-    return sum / numbers.length;
+    return numbers.reduce((acc, val) => acc + val, 0) / numbers.length;
   }
 
   static COUNT(values) {
