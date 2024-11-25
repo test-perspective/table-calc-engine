@@ -1,8 +1,8 @@
 import { FormulaParser } from './parser/FormulaParser.js';
 import { ExcelFunctions } from './functions/ExcelFunctions.js';
-import { CellReference } from '../utils/CellReference.js';
+import { CellReference } from './utils/CellReference.js';
 import { FormulaError } from './types/index.js';
-import { ExcelFormatter } from './formatter/ExcelFormatter';
+import { ExcelFormatter } from './formatter/ExcelFormatter.js';
 
 export class FormulaEngine {
   constructor() {
