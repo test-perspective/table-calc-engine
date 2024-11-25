@@ -1,6 +1,13 @@
 export class ExcelFunctions {
   constructor(engine) {
     this.engine = engine;
+    this.functions = {
+      'SUM': (args, allTables, currentTableIndex) => this.SUM(args, allTables, currentTableIndex),
+      'AVERAGE': (args, allTables, currentTableIndex) => this.AVERAGE(args, allTables, currentTableIndex),
+      'COUNT': (args, allTables, currentTableIndex) => this.COUNT(args, allTables, currentTableIndex),
+      'MAX': (args, allTables, currentTableIndex) => this.MAX(args, allTables, currentTableIndex),
+      'MIN': (args, allTables, currentTableIndex) => this.MIN(args, allTables, currentTableIndex)
+    };
   }
 
   SUM(args, allTables, currentTableIndex) {

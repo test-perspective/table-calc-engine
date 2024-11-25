@@ -5,25 +5,8 @@ import { ExcelFormatter } from './formatter/ExcelFormatter.js';
 export class FormulaEngine {
   constructor() {
     this.parser = new FormulaParser();
-    this.excelFunctions = new ExcelFunctions(this);
-    this.functions = {
-      'SUM': (args, allTables, currentTableIndex) => {
-        return this.excelFunctions.SUM(args, allTables, currentTableIndex);
-      },
-      'AVERAGE': (args, allTables, currentTableIndex) => {
-        return this.excelFunctions.AVERAGE(args, allTables, currentTableIndex);
-      },
-      'COUNT': (args, allTables, currentTableIndex) => {
-        return this.excelFunctions.COUNT(args, allTables, currentTableIndex);
-      },
-      'MAX': (args, allTables, currentTableIndex) => {
-        return this.excelFunctions.MAX(args, allTables, currentTableIndex);
-      },
-      'MIN': (args, allTables, currentTableIndex) => {
-        return this.excelFunctions.MIN(args, allTables, currentTableIndex);
-      }
-    };
     this.formatter = new ExcelFormatter();
+    this.excelFunctions = new ExcelFunctions(this);
   }
 
   processData(data) {
@@ -139,10 +122,10 @@ export class FormulaEngine {
           }
 
         case 'function':
-          if (!(ast.name in this.functions)) {
+          if (!(ast.name in this.excelFunctions.functions)) {
             throw new Error(`Unknown function: ${ast.name}`);
           }
-          return this.functions[ast.name](ast.arguments, allTables, currentTableIndex);
+          return this.excelFunctions.functions[ast.name](ast.arguments, allTables, currentTableIndex);
 
         case 'cell':
           const tableIndex = ast.tableId !== undefined ? ast.tableId : currentTableIndex;
