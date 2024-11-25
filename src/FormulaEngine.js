@@ -1,9 +1,10 @@
-import { FormulaParser } from './parser/FormulaParser.js';
+import { FormulaParser } from './parsers/FormulaParser.js';
 import { ExcelFunctions } from './functions/ExcelFunctions.js';
 import { CellReference } from './utils/CellReference.js';
 import { FormulaError } from './types/index.js';
 import { ExcelFormatter } from './formatter/ExcelFormatter.js';
 import { ErrorHandler } from './utils/ErrorHandler.js';
+import { CellParser } from './parsers/CellParser.js';
 
 export class FormulaEngine {
   constructor() {
@@ -448,7 +449,6 @@ export class FormulaEngine {
   }
 
   _evaluateBasicFormula(expression, table) {
-    // ゼロ除算チェック
     if (expression.includes('/0')) {
       return ErrorHandler.DIV_ZERO;
     }
@@ -457,7 +457,8 @@ export class FormulaEngine {
       const parts = expression.split(/([+\-*\/])/);
       const evaluatedParts = parts.map(part => {
         const trimmed = part.trim();
-        const cellRef = this._parseCellReference(trimmed);
+        const cellRef = CellParser.parse(trimmed);
+        
         if (cellRef) {
           if (!table[cellRef.row] || !table[cellRef.row][cellRef.col]) {
             return ErrorHandler.REF;
@@ -471,7 +472,6 @@ export class FormulaEngine {
         return trimmed;
       });
 
-      // エラーが含まれているかチェック
       if (evaluatedParts.some(part => ErrorHandler.isError(part))) {
         return evaluatedParts.find(part => ErrorHandler.isError(part));
       }
@@ -480,5 +480,23 @@ export class FormulaEngine {
     } catch (error) {
       return ErrorHandler.ERROR;
     }
+  }
+
+  _calculateSum(range, table) {
+    const rangeRef = CellParser.parseRange(range);
+    if (!rangeRef) return ErrorHandler.REF;
+
+    let sum = 0;
+    for (let row = rangeRef.start.row; row <= rangeRef.end.row; row++) {
+      for (let col = rangeRef.start.col; col <= rangeRef.end.col; col++) {
+        if (table[row] && table[row][col]) {
+          const value = table[row][col].value;
+          if (typeof value === 'number') {
+            sum += value;
+          }
+        }
+      }
+    }
+    return sum;
   }
 } 
