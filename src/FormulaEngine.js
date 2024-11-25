@@ -157,53 +157,6 @@ export class FormulaEngine {
     return result;
   }
 
-  processTableData(table, allTables, currentTableIndex) {
-    return table.map(row =>
-      row.map(cell => {
-        if (cell.value && typeof cell.value === 'string' && cell.value.startsWith('=')) {
-          const result = this.evaluateFormula(cell.value, allTables, currentTableIndex);
-          const formattedResult = this.formatValue(result, cell.excelFormat);
-          return {
-            ...cell,
-            value: cell.value,
-            resolvedValue: result,
-            displayValue: formattedResult,
-            resolved: true
-          };
-        }
-        if (!isNaN(Number(cell.value))) {
-          return {
-            ...cell,
-            value: Number(cell.value),
-            resolvedValue: Number(cell.value),
-            displayValue: this.formatValue(Number(cell.value), cell.excelFormat),
-            resolved: true
-          };
-        }
-        return {
-          ...cell,
-          resolvedValue: cell.value,
-          displayValue: cell.value,
-          resolved: true
-        };
-      })
-    );
-  }
-
-  processFormulas(formulas, tableData) {
-    return formulas.map(formula => {
-      if (!formula.resolved) {
-        const result = this.evaluateFormula(formula.value, tableData);
-        return {
-          ...formula,
-          value: this.formatValue(result, formula.excelFormat),
-          resolved: true
-        };
-      }
-      return formula;
-    });
-  }
-
   evaluateFormula(formula, allTables, currentTableIndex, visited = new Set()) {
     try {
       if (!formula.startsWith('=')) {
@@ -277,27 +230,6 @@ export class FormulaEngine {
     }
   }
 
-  sumFunction(args, allTables, currentTableIndex, visited) {
-    try {
-      const values = args.map(arg => {
-        if (arg.type === 'range') {
-          return this.getRangeValues(arg.reference, allTables, currentTableIndex);
-        } else if (arg.type === 'cell') {
-          return [this.getCellValue(arg.reference, allTables, currentTableIndex)];
-        } else {
-          return [this.evaluateAst(arg, allTables, currentTableIndex, visited)];
-        }
-      }).flat();
-
-      return values.reduce((sum, value) => {
-        const num = Number(value);
-        return isNaN(num) ? sum : sum + num;
-      }, 0);
-    } catch (error) {
-      return '#ERROR!';
-    }
-  }
-
   getRangeValues(range, data, tableIndex) {
     try {
       if (tableIndex >= data.length) {
@@ -352,52 +284,6 @@ export class FormulaEngine {
     }
   }
 
-  parseTableReference(reference) {
-    if (typeof reference !== 'string') {
-      return [null, reference];
-    }
-    const parts = reference.split('!');
-    if (parts.length === 2) {
-      return [parseInt(parts[0]), parts[1]];
-    }
-    return [null, reference];
-  }
-
-  extractFormulas(tables) {
-    const formulas = [];
-    tables.forEach((table, tableIndex) => {
-      table.forEach((row, rowIndex) => {
-        row.forEach((cell, colIndex) => {
-          if (typeof cell.value === 'string' && cell.value.startsWith('=')) {
-            formulas.push({
-              value: cell.value,
-              resolvedValue: cell.resolvedValue,
-              displayValue: cell.displayValue,
-              tableIndex,
-              position: `${CellReference.columnToLetter(colIndex)}${rowIndex + 1}`,
-              resolved: true,
-              excelFormat: cell.excelFormat,
-              macroId: cell.macroId
-            });
-          }
-        });
-      });
-    });
-    return formulas;
-  }
-
-  formatValue(value, format) {
-    if (value === null || value === undefined) return '';
-    
-    const formatted = this.formatter.format(value, format);
-    return formatted.displayValue;
-  }
-
-  getDecimalPlaces(format) {
-    const match = format.match(/\.(\d+)/);
-    return match ? match[1].length : 0;
-  }
-
   parseCellReference(ref) {
     const match = ref.match(/^(\$?)([A-Za-z]+)(\$?)(\d+)$/i);
     if (!match) {
@@ -420,27 +306,6 @@ export class FormulaEngine {
     };
   }
 
-  parseRange(range) {
-    const [start, end] = range.split(':');
-    const startCell = this.parseCellReference(start);
-    const endCell = this.parseCellReference(end);
-
-    if (!startCell || !endCell) {
-      return null;
-    }
-
-    return {
-      startCol: startCell.col,
-      startRow: startCell.row,
-      endCol: endCell.col,
-      endRow: endCell.row,
-      isAbsoluteStartCol: startCell.isAbsoluteCol,
-      isAbsoluteStartRow: startCell.isAbsoluteRow,
-      isAbsoluteEndCol: endCell.isAbsoluteCol,
-      isAbsoluteEndRow: endCell.isAbsoluteRow
-    };
-  }
-
   // 数値変換のヘルパーメソッド
   _convertToNumber(value) {
     if (typeof value === 'string' && !isNaN(value) && value.trim() !== '') {
@@ -449,25 +314,4 @@ export class FormulaEngine {
     return value;
   }
 
-  _evaluateBasicFormula(expression, table) {
-    return BasicEvaluator.evaluate(expression, table);
-  }
-
-  _calculateSum(range, table) {
-    const rangeRef = CellParser.parseRange(range);
-    if (!rangeRef) return ErrorHandler.REF;
-
-    let sum = 0;
-    for (let row = rangeRef.start.row; row <= rangeRef.end.row; row++) {
-      for (let col = rangeRef.start.col; col <= rangeRef.end.col; col++) {
-        if (table[row] && table[row][col]) {
-          const value = table[row][col].value;
-          if (typeof value === 'number') {
-            sum += value;
-          }
-        }
-      }
-    }
-    return sum;
-  }
 } 
