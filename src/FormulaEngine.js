@@ -1,12 +1,14 @@
 import { FormulaParser } from './parsers/FormulaParser.js';
 import { ExcelFunctions } from './functions/ExcelFunctions.js';
 import { ExcelFormatter } from './formatter/ExcelFormatter.js';
+import { CellFormatter } from './formatter/CellFormatter.js';
 
 export class FormulaEngine {
   constructor() {
     this.parser = new FormulaParser();
     this.formatter = new ExcelFormatter();
     this.excelFunctions = new ExcelFunctions(this);
+    this.cellFormatter = new CellFormatter(this.formatter);
   }
 
   processData(data) {
@@ -18,53 +20,15 @@ export class FormulaEngine {
     result.tables.forEach((table, tableIndex) => {
       table.forEach((rows, rowIndex) => {
         rows.forEach((cell, colIndex) => {
-          const originalValue = cell.value;
+          // 数式の場合は評価
+          if (typeof cell.value === 'string' && cell.value.startsWith('=')) {
+            cell.resolvedValue = this.evaluateFormula(cell.value, result.tables, tableIndex);
+          }
           
-          // 数式の場合
-          if (typeof originalValue === 'string' && originalValue.startsWith('=')) {
-            const resolvedValue = this.evaluateFormula(originalValue, result.tables, tableIndex);
-            cell.resolved = true;
-            cell.resolvedValue = this._convertToNumber(resolvedValue);
-            
-            // フォーマット用の値を計算
-            const formatValue = cell.excelFormat && cell.excelFormat.includes('%') 
-              ? cell.resolvedValue / 100 
-              : cell.resolvedValue;
-
-            // フォーマットの適用
-            if (cell.excelFormat) {
-              const formatted = this.formatter.format(formatValue, cell.excelFormat);
-              cell.displayValue = formatted.displayValue;
-              if (formatted.textColor) {
-                cell.textColor = formatted.textColor;
-              }
-            } else {
-              cell.displayValue = String(formatValue);
-            }
-
-            // formulasに追加（計算結果を含む全てのプロパティを含める）
-            result.formulas.push({
-              table: tableIndex,
-              row: rowIndex,
-              col: colIndex,
-              ...cell  // formulaプロパティを追加せず、セルの既存プロパティのみを使用
-            });
-            
-          } else {
-            // 通常の値の場合
-            cell.resolved = true;
-            cell.resolvedValue = originalValue;
-            
-            // フォーマットの適用
-            if (cell.excelFormat) {
-              const formatted = this.formatter.format(originalValue, cell.excelFormat);
-              cell.displayValue = formatted.displayValue;
-              if (formatted.textColor) {
-                cell.textColor = formatted.textColor;
-              }
-            } else {
-              cell.displayValue = String(originalValue);
-            }
+          // フォーマット処理
+          const formulaCell = this.cellFormatter.processCell(cell, tableIndex, rowIndex, colIndex);
+          if (formulaCell) {
+            result.formulas.push(formulaCell);
           }
         });
       });
@@ -220,14 +184,6 @@ export class FormulaEngine {
       isAbsoluteCol: colAbs === '$',
       isAbsoluteRow: rowAbs === '$'
     };
-  }
-
-  // 数値変換のヘルパーメソッド
-  _convertToNumber(value) {
-    if (typeof value === 'string' && !isNaN(value) && value.trim() !== '') {
-      return Number(value);
-    }
-    return value;
   }
 
 } 
