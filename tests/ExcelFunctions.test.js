@@ -1,6 +1,6 @@
 import { FormulaEngine } from '../src/FormulaEngine.js';
 
-describe('FormulaEngine', () => {
+describe('Excel Functions', () => {
   let engine;
   let testData;
 
@@ -29,38 +29,28 @@ describe('FormulaEngine', () => {
     ];
   });
 
-  // 基本的なセル参照のテスト
-  test('should handle simple cell reference', () => {
-    const result = engine.evaluateFormula('=A1', testData, 0);
-    expect(result).toBe('A');
-  });
-
-  // SUM関数のテスト
   test('should calculate SUM correctly', () => {
     const result = engine.evaluateFormula('=SUM(A2:B3)', testData, 0);
     expect(result).toBe(12); // 1 + 2 + 4 + 5 = 12
   });
 
-  // 算術演算のテスト
-  test('should handle basic arithmetic', () => {
-    const result = engine.evaluateFormula('=1+2', testData, 0);
-    expect(result).toBe(3);
+  test('should calculate AVERAGE correctly', () => {
+    const result = engine.evaluateFormula('=AVERAGE(A2:B3)', testData, 0);
+    expect(result).toBe(3); // (1 + 2 + 4 + 5) / 4 = 3
   });
 
-  // セル参照を含む算術演算のテスト
-  test('should handle arithmetic with cell references', () => {
-    const result = engine.evaluateFormula('=A2+B2', testData, 0);
-    expect(result).toBe(3); // 1 + 2 = 3
+  test('should calculate COUNT correctly', () => {
+    const result = engine.evaluateFormula('=COUNT(A2:B3)', testData, 0);
+    expect(result).toBe(4); // 4 numeric values
   });
 
-  // エラー処理のテスト
-  test('should handle invalid cell reference', () => {
-    const result = engine.evaluateFormula('=Z99', testData, 0);
-    expect(result).toBe('#REF!');
+  test('should calculate MAX correctly', () => {
+    const result = engine.evaluateFormula('=MAX(A2:B3)', testData, 0);
+    expect(result).toBe(5); // highest value is 5
   });
 
-  test('should handle division by zero', () => {
-    const result = engine.evaluateFormula('=1/0', testData, 0);
-    expect(result).toBe('#DIV/0!');
+  test('should calculate MIN correctly', () => {
+    const result = engine.evaluateFormula('=MIN(A2:B3)', testData, 0);
+    expect(result).toBe(1); // lowest value is 1
   });
 }); 
