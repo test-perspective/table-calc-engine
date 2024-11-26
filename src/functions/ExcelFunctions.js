@@ -124,6 +124,18 @@ export class ExcelFunctions {
     }
   }
 
+  TODAY(args, allTables, currentTableIndex) {
+    try {
+      // 引数は無視する（Excelの仕様に準拠）
+      const now = new Date();
+      
+      // 時刻部分を0にリセットした新しい日付オブジェクトを返す
+      return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } catch (error) {
+      return '#ERROR!';
+    }
+  }
+
   getFunctionArgValues(args, allTables, currentTableIndex) {
     return args.map(arg => {
       if (arg.type === 'range') {

@@ -105,6 +105,7 @@ describe('Excel Functions', () => {
       expect(engine.evaluateFormula('=COUNT(1,"2",3,"invalid")', testData, 0)).toBe(3);
       expect(engine.evaluateFormula('=MAX(1,"2",3,"invalid")', testData, 0)).toBe(3);
       expect(engine.evaluateFormula('=MIN(1,"2",3,"invalid")', testData, 0)).toBe(1);
+      expect(engine.evaluateFormula('=MIN(-1,"2",3,"invalid")', testData, 0)).toBe(-1);
     });
   });
 }); 
