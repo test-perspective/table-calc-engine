@@ -81,9 +81,7 @@ export class ExcelFunctions {
 
       // 各引数を数値に変換（小数点以下は切り捨て）
       const [yearNum, monthNum, dayNum] = values.map(v => {
-        // 文字列が数値に変換できない場合は #VALUE! を返す
         const num = Number(v);
-
         if (isNaN(num)) {
           throw new Error('#VALUE!');
         }
@@ -102,21 +100,20 @@ export class ExcelFunctions {
       }
 
       try {
-        // JavaScriptのDateオブジェクトを使用して日付を作成
-        // monthは0-basedなので1を引く
         const date = new Date(year, monthNum - 1, dayNum);
-
-        // 有効な日付かどうかを確認
         if (isNaN(date.getTime())) {
           return '#VALUE!';
         }
 
-        return date;
+        // Excel基準日からの経過日数を計算
+        const excelBaseDate = new Date(1900, 0, 1);
+        const daysSinceBase = Math.floor((date - excelBaseDate) / (1000 * 60 * 60 * 24)) + 1;
+        
+        return daysSinceBase;
       } catch (error) {
         return '#VALUE!';
       }
     } catch (error) {
-      // エラーメッセージをそのまま返す
       if (typeof error === 'object' && error.message) {
         return error.message;
       }
@@ -128,9 +125,15 @@ export class ExcelFunctions {
     try {
       // 引数は無視する（Excelの仕様に準拠）
       const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       
-      // 時刻部分を0にリセットした新しい日付オブジェクトを返す
-      return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      // Excel基準日（1900年1月1日）
+      const excelBaseDate = new Date(1900, 0, 1);
+      
+      // 経過日数を計算（ミリ秒を日数に変換）
+      const daysSinceBase = Math.floor((today - excelBaseDate) / (1000 * 60 * 60 * 24)) + 1;
+      
+      return daysSinceBase;
     } catch (error) {
       return '#ERROR!';
     }
