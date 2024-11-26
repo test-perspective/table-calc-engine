@@ -1,8 +1,10 @@
 import { FormulaEngine } from '../src/FormulaEngine.js';
+import { ExcelFormatter } from '../src/formatter/ExcelFormatter.js';
 
 describe('Excel Functions', () => {
   let engine;
   let testData;
+  let formatter;
 
   beforeEach(() => {
     engine = new FormulaEngine();
@@ -27,6 +29,8 @@ describe('Excel Functions', () => {
         ]
       ]
     ];
+
+    formatter = new ExcelFormatter();
   });
 
   test('should calculate SUM correctly', () => {
@@ -113,6 +117,28 @@ describe('Excel Functions', () => {
       const anotherCalc = engine.evaluateFormula('=TODAY()*2-TODAY()', testData, 0);
       // today * 2 - today = today
       expect(anotherCalc).toBe(today);
+    });
+
+    test('should format as date when specified', () => {
+      const result = engine.evaluateFormula('=TODAY()', testData, 0);
+      const formatted = formatter.format(result, 'Date');
+      
+      const today = new Date();
+      const expectedFormat = `${today.getFullYear()}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}`;
+      
+      expect(formatted.displayValue).toBe(expectedFormat);
+    });
+
+    test('should format as date in complex formulas', () => {
+      // 明日の日付
+      const tomorrow = engine.evaluateFormula('=TODAY()+1', testData, 0);
+      const formatted = formatter.format(tomorrow, 'Date');
+      
+      const tomorrowDate = new Date();
+      tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+      const expectedFormat = `${tomorrowDate.getFullYear()}/${String(tomorrowDate.getMonth() + 1).padStart(2, '0')}/${String(tomorrowDate.getDate()).padStart(2, '0')}`;
+      
+      expect(formatted.displayValue).toBe(expectedFormat);
     });
   });
 

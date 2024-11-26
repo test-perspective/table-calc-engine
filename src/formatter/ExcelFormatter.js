@@ -82,6 +82,17 @@ export class ExcelFormatter {
       return useThousandSeparator ? this._formatWithThousandSeparator(fixedNum) : fixedNum;
     }
 
+    if (format === 'yyyy/mm/dd') {
+      const excelBaseDate = new Date(1900, 0, 1);
+      const targetDate = new Date(excelBaseDate.getTime() + (numValue - 1) * 24 * 60 * 60 * 1000);
+      
+      const year = targetDate.getFullYear();
+      const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+      const day = String(targetDate.getDate()).padStart(2, '0');
+      
+      return `${year}/${month}/${day}`;
+    }
+
     return this._formatGeneral(value);
   }
 
