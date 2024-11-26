@@ -79,8 +79,7 @@ describe('Excel Functions', () => {
       expect(result.getMonth()).toBe(0); // 13月は次年の1月
     });
 
-    test.only('should handle invalid parameters', () => {
-      console.log('zzzzzeee...')
+    test('should handle invalid parameters', () => {
       expect(engine.evaluateFormula('=DATE("invalid",1,1)', testData, 0)).toBe('#VALUE!');
       expect(engine.evaluateFormula('=DATE(2024,"invalid",1)', testData, 0)).toBe('#VALUE!');
       expect(engine.evaluateFormula('=DATE(2024,1,"invalid")', testData, 0)).toBe('#VALUE!');

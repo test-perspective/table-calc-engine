@@ -82,15 +82,22 @@ export class FormulaParser {
     let lowestPrecedenceIndex = -1;
     let parenCount = 0;
 
-    for (let i = formula.length - 1; i >= 0; i--) {
-      const char = formula[i];
-      if (char === ')') parenCount++;
-      else if (char === '(') parenCount--;
-      else if (parenCount === 0 && operators.includes(char)) {
-        if (lowestPrecedenceOp === null || 
-            operators.indexOf(char) <= operators.indexOf(lowestPrecedenceOp)) {
-          lowestPrecedenceOp = char;
-          lowestPrecedenceIndex = i;
+    const isUnaryMinus = formula.startsWith('-') && 
+      (formula.length === 1 || !operators.includes(formula[1]));
+    
+    if (!isUnaryMinus) {
+      for (let i = formula.length - 1; i >= 0; i--) {
+        const char = formula[i];
+        if (char === ')') parenCount++;
+        else if (char === '(') parenCount--;
+        else if (parenCount === 0 && operators.includes(char)) {
+          if (i === 0 || !operators.includes(formula[i - 1])) {
+            if (lowestPrecedenceOp === null || 
+                operators.indexOf(char) <= operators.indexOf(lowestPrecedenceOp)) {
+              lowestPrecedenceOp = char;
+              lowestPrecedenceIndex = i;
+            }
+          }
         }
       }
     }
