@@ -70,6 +70,60 @@ export class ExcelFunctions {
     }
   }
 
+  DATE(args, allTables, currentTableIndex) {
+    try {
+      const values = this.getFunctionArgValues(args, allTables, currentTableIndex);
+      
+      // 引数が3つであることを確認
+      if (values.length !== 3) {
+        return '#VALUE!';
+      }
+
+      // 各引数を数値に変換（小数点以下は切り捨て）
+      const [yearNum, monthNum, dayNum] = values.map(v => {
+        // 文字列が数値に変換できない場合は #VALUE! を返す
+        const num = Number(v);
+
+        if (isNaN(num)) {
+          throw new Error('#VALUE!');
+        }
+        return Math.floor(num);
+      });
+
+      // 年の処理
+      let year = yearNum;
+      if (year >= 0 && year < 1900) {
+        year += 1900;
+      }
+
+      // 年の範囲チェック
+      if (year < 0 || year > 9999) {
+        return '#NUM!';
+      }
+
+      try {
+        // JavaScriptのDateオブジェクトを使用して日付を作成
+        // monthは0-basedなので1を引く
+        const date = new Date(year, monthNum - 1, dayNum);
+
+        // 有効な日付かどうかを確認
+        if (isNaN(date.getTime())) {
+          return '#VALUE!';
+        }
+
+        return date;
+      } catch (error) {
+        return '#VALUE!';
+      }
+    } catch (error) {
+      // エラーメッセージをそのまま返す
+      if (typeof error === 'object' && error.message) {
+        return error.message;
+      }
+      return '#VALUE!';
+    }
+  }
+
   getFunctionArgValues(args, allTables, currentTableIndex) {
     return args.map(arg => {
       if (arg.type === 'range') {

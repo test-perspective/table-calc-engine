@@ -132,6 +132,13 @@ export class FormulaParser {
       };
     }
 
+    if (formula.startsWith('"') && formula.endsWith('"')) {
+      return {
+        type: 'literal',
+        value: formula.slice(1, -1)
+      };
+    }
+
     if (!isNaN(formula)) {
       return {
         type: 'literal',
