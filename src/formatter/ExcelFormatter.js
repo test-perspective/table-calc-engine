@@ -50,8 +50,9 @@ export class ExcelFormatter {
       return '';
     }
 
-    if (format === '@') {
-      return String(value);
+    if (format === '@' || format === 'Text') {
+      const strValue = String(value);
+      return strValue.startsWith('=') ? strValue.substring(1) : strValue;
     }
 
     const numValue = Number(value);

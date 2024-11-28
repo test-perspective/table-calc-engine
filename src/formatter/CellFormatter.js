@@ -17,8 +17,9 @@ export class CellFormatter {
       const resolvedFormat = this.formatter._resolvePredefinedFormat(cell.excelFormat);
 
       if (resolvedFormat === '@') {
-        cell.displayValue = originalValue;
         cell.resolved = true;
+        cell.resolvedValue = originalValue;
+        this.applyFormat(cell, originalValue);
         return {
           table: tableIndex,
           row: rowIndex,

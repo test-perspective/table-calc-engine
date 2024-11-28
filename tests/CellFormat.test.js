@@ -100,7 +100,7 @@ describe('Cell Format Tests', () => {
       const result = engine.processData(testData);
       expect(result.tables[0][0][0].displayValue).toBe('30.00');
       expect(result.tables[0][0][1].displayValue).toBe('50.00%');
-      expect(result.tables[0][0][2].displayValue).toBe('=1+2');
+      expect(result.tables[0][0][2].displayValue).toBe('1+2');
     });
   });
 
@@ -161,7 +161,8 @@ describe('Cell Format Tests', () => {
           { value: 0.1234, excelFormat: 'Percentage' },    // 12.34%
           { value: 1234.567, excelFormat: 'Scientific' },  // 1.23E+03
           { value: "ABC", excelFormat: 'Text' },           // ABC
-          { value: "=SUM(A1:B1)", excelFormat: 'Text' }    // =SUM(A1:B1) として表示
+          { value: "=SUM(A1:B1)", excelFormat: 'Text' },   // SUM(A1:B1) として表示（=を除去）
+          { value: "=TODAY()", excelFormat: 'Text' }       // TODAY() として表示（=を除去）
         ]
       ]];
 
@@ -172,7 +173,8 @@ describe('Cell Format Tests', () => {
       expect(result.tables[0][0][2].displayValue).toBe('12.34%');
       expect(result.tables[0][0][3].displayValue).toBe('1.23E+03');
       expect(result.tables[0][0][4].displayValue).toBe('ABC');
-      expect(result.tables[0][0][5].displayValue).toBe('=SUM(A1:B1)');  // 数式がそのまま表示される
+      expect(result.tables[0][0][5].displayValue).toBe('SUM(A1:B1)');  // =が除去されていることを確認
+      expect(result.tables[0][0][6].displayValue).toBe('TODAY()');     // =が除去されていることを確認
     });
 
     test('should fallback to custom format if name is not predefined', () => {
