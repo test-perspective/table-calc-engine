@@ -53,6 +53,10 @@ export class ExcelFormatter {
     const numValue = Number(value);
     if (isNaN(numValue) && format !== '@') return String(value);
 
+    if (format.includes('?/')) {
+      return this._formatAsFraction(numValue, format);
+    }
+
     if (format === '@') {
       return value === 0 ? '' : String(value);
     }
@@ -156,12 +160,70 @@ export class ExcelFormatter {
   }
 
   _resolvePredefinedFormat(formatPattern) {
-    return this.predefinedFormats[formatPattern] || formatPattern;
+    const resolved = this.predefinedFormats[formatPattern] || formatPattern;
+    return resolved;
   }
 
   _formatWithThousandSeparator(numStr) {
     const [intPart, decPart] = numStr.split('.');
     const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     return decPart ? `${formattedInt}.${decPart}` : formattedInt;
+  }
+
+  _formatAsFraction(value, format) {
+    if (isNaN(value)) return String(value);
+    if (Math.abs(value) < 0.000001) return '0';
+
+    const isNegative = value < 0;
+    const absValue = Math.abs(value);
+    const wholePart = Math.floor(absValue);
+    const fractionalPart = absValue - wholePart;
+
+    if (fractionalPart < 0.000001) {
+      return isNegative ? `-${wholePart}` : String(wholePart);
+    }
+
+    const denominatorMatch = format.match(/\?\/(\d+)/);
+    
+    if (denominatorMatch) {
+      const denominator = parseInt(denominatorMatch[1]);
+      const numerator = Math.round(fractionalPart * denominator);
+      
+      if (numerator === 0) {
+        return isNegative ? `-${wholePart}` : String(wholePart);
+      }
+      
+      if (wholePart === 0) {
+        const result = `${numerator}/${denominator}`;
+        return isNegative ? `-${result}` : result;
+      } else {
+        return `${isNegative ? '-' : ''}${wholePart} ${numerator}/${denominator}`;
+      }
+    } else {
+      const commonDenominators = [2, 3, 4, 5, 6, 8, 10, 12, 16];
+      let bestError = Number.MAX_VALUE;
+      let bestFraction = null;
+
+      for (const denominator of commonDenominators) {
+        const numerator = Math.round(fractionalPart * denominator);
+        const error = Math.abs(fractionalPart - numerator / denominator);
+
+        if (error < bestError) {
+          bestError = error;
+          bestFraction = { numerator, denominator };
+        }
+      }
+
+      if (bestFraction && bestFraction.numerator !== 0) {
+        if (wholePart === 0) {
+          const result = `${bestFraction.numerator}/${bestFraction.denominator}`;
+          return isNegative ? `-${result}` : result;
+        } else {
+          return `${isNegative ? '-' : ''}${wholePart} ${bestFraction.numerator}/${bestFraction.denominator}`;
+        }
+      }
+      
+      return isNegative ? `-${wholePart}` : String(wholePart);
+    }
   }
 } 

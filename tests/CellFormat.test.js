@@ -201,4 +201,88 @@ describe('Cell Format Tests', () => {
       expect(result.tables[0][0][2].displayValue).toBe('ABC');
     });
   });
+
+  describe('Fraction Format', () => {
+    test('should format decimal numbers as fractions', () => {
+      const testData = [[
+        [
+          { value: 0.5, excelFormat: 'Fraction' },      // 1/2
+          { value: 0.25, excelFormat: 'Fraction' },     // 1/4
+          { value: 0.125, excelFormat: 'Fraction' },    // 1/8
+          { value: 0.333333, excelFormat: 'Fraction' }, // 1/3
+          { value: 1.25, excelFormat: 'Fraction' },     // 1 1/4
+          { value: 2.5, excelFormat: 'Fraction' },      // 2 1/2
+          { value: -0.5, excelFormat: 'Fraction' },     // -1/2
+        ]
+      ]];
+
+      const result = engine.processData(testData);
+      
+      expect(result.tables[0][0][0].displayValue).toBe('1/2');
+      expect(result.tables[0][0][1].displayValue).toBe('1/4');
+      expect(result.tables[0][0][2].displayValue).toBe('1/8');
+      expect(result.tables[0][0][3].displayValue).toBe('1/3');
+      expect(result.tables[0][0][4].displayValue).toBe('1 1/4');
+      expect(result.tables[0][0][5].displayValue).toBe('2 1/2');
+      expect(result.tables[0][0][6].displayValue).toBe('-1/2');
+    });
+
+    test('should handle custom fraction formats', () => {
+      const testData = [[
+        [
+          { value: 0.5, excelFormat: '# ?/2' },       // 分母が2
+          { value: 0.33, excelFormat: '# ?/3' },      // 分母が3
+          { value: 0.125, excelFormat: '# ?/8' },     // 分母が8
+          { value: 0.167, excelFormat: '# ??/??' },   // 自動で最適な分数
+          { value: 2.5, excelFormat: '# ?/2' },       // 2 1/2
+        ]
+      ]];
+
+      const result = engine.processData(testData);
+      
+      expect(result.tables[0][0][0].displayValue).toBe('1/2');
+      expect(result.tables[0][0][1].displayValue).toBe('1/3');
+      expect(result.tables[0][0][2].displayValue).toBe('1/8');
+      expect(result.tables[0][0][3].displayValue).toBe('1/6');
+      expect(result.tables[0][0][4].displayValue).toBe('2 1/2');
+    });
+
+    test('should handle edge cases in fraction format', () => {
+      const testData = [[
+        [
+          { value: 0, excelFormat: 'Fraction' },          // 0
+          { value: 1, excelFormat: 'Fraction' },          // 1
+          { value: -1, excelFormat: 'Fraction' },         // -1
+          { value: 0.000001, excelFormat: 'Fraction' },   // とても小さい数
+          { value: 'invalid', excelFormat: 'Fraction' },  // 無効な入力
+        ]
+      ]];
+
+      const result = engine.processData(testData);
+      
+      expect(result.tables[0][0][0].displayValue).toBe('0');
+      expect(result.tables[0][0][1].displayValue).toBe('1');
+      expect(result.tables[0][0][2].displayValue).toBe('-1');
+      expect(result.tables[0][0][3].displayValue).toBe('0');  // 小さすぎる数は0として表示
+      expect(result.tables[0][0][4].displayValue).toBe('invalid');
+    });
+
+    test('should handle complex mixed numbers', () => {
+      const testData = [[
+        [
+          { value: 3.75, excelFormat: 'Fraction' },     // 3 3/4
+          { value: 2.6666, excelFormat: 'Fraction' },   // 2 2/3
+          { value: -1.25, excelFormat: 'Fraction' },    // -1 1/4
+          { value: 4.125, excelFormat: 'Fraction' },    // 4 1/8
+        ]
+      ]];
+
+      const result = engine.processData(testData);
+      
+      expect(result.tables[0][0][0].displayValue).toBe('3 3/4');
+      expect(result.tables[0][0][1].displayValue).toBe('2 2/3');
+      expect(result.tables[0][0][2].displayValue).toBe('-1 1/4');
+      expect(result.tables[0][0][3].displayValue).toBe('4 1/8');
+    });
+  });
 }); 
