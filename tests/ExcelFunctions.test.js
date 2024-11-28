@@ -120,24 +120,33 @@ describe('Excel Functions', () => {
     });
 
     test('should format as date when specified', () => {
-      const result = engine.evaluateFormula('=TODAY()', testData, 0);
-      const formatted = formatter.format(result, 'Date');
-      
+      const testData = [[
+        [
+          { value: '=TODAY()', excelFormat: 'yyyy/mm/dd' }  // フォーマットを指定
+        ]
+      ]];
+
+      const result = engine.processData(testData);
+      const formatted = result.tables[0][0][0];
       const today = new Date();
       const expectedFormat = `${today.getFullYear()}/${String(today.getMonth() + 1).padStart(2, '0')}/${String(today.getDate()).padStart(2, '0')}`;
-      
+
       expect(formatted.displayValue).toBe(expectedFormat);
     });
 
     test('should format as date in complex formulas', () => {
-      // 明日の日付
-      const tomorrow = engine.evaluateFormula('=TODAY()+1', testData, 0);
-      const formatted = formatter.format(tomorrow, 'Date');
-      
+      const testData = [[
+        [
+          { value: '=TODAY()+1', excelFormat: 'yyyy/mm/dd' }  // フォーマットを指定
+        ]
+      ]];
+
+      const result = engine.processData(testData);
+      const formatted = result.tables[0][0][0];
       const tomorrowDate = new Date();
       tomorrowDate.setDate(tomorrowDate.getDate() + 1);
       const expectedFormat = `${tomorrowDate.getFullYear()}/${String(tomorrowDate.getMonth() + 1).padStart(2, '0')}/${String(tomorrowDate.getDate()).padStart(2, '0')}`;
-      
+
       expect(formatted.displayValue).toBe(expectedFormat);
     });
   });

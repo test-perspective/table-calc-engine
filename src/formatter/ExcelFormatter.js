@@ -50,15 +50,19 @@ export class ExcelFormatter {
       return '';
     }
 
+    if (format === '@') {
+      return String(value);
+    }
+
     const numValue = Number(value);
     if (isNaN(numValue) && format !== '@') return String(value);
 
-    if (format.includes('?/')) {
-      return this._formatAsFraction(numValue, format);
+    if (this._isDateFormat(format)) {
+      return this._formatDate(numValue);
     }
 
-    if (format === '@') {
-      return value === 0 ? '' : String(value);
+    if (format.includes('?/')) {
+      return this._formatAsFraction(numValue, format);
     }
 
     if (format.includes('E+00')) {
@@ -84,17 +88,6 @@ export class ExcelFormatter {
       const useThousandSeparator = format.includes(',');
       const fixedNum = numValue.toFixed(decimalPlaces);
       return useThousandSeparator ? this._formatWithThousandSeparator(fixedNum) : fixedNum;
-    }
-
-    if (format === 'yyyy/mm/dd') {
-      const excelBaseDate = new Date(1900, 0, 1);
-      const targetDate = new Date(excelBaseDate.getTime() + (numValue - 1) * 24 * 60 * 60 * 1000);
-      
-      const year = targetDate.getFullYear();
-      const month = String(targetDate.getMonth() + 1).padStart(2, '0');
-      const day = String(targetDate.getDate()).padStart(2, '0');
-      
-      return `${year}/${month}/${day}`;
     }
 
     return this._formatGeneral(value);
@@ -159,9 +152,17 @@ export class ExcelFormatter {
     return typeof value === 'string' && value.startsWith('#');
   }
 
-  _resolvePredefinedFormat(formatPattern) {
-    const resolved = this.predefinedFormats[formatPattern] || formatPattern;
-    return resolved;
+  _resolvePredefinedFormat(format) {
+    const predefinedFormats = {
+      'Number': '#,##0.00',
+      'Currency': '$#,##0.00',
+      'Percentage': '0.00%',
+      'Scientific': '0.00E+00',
+      'Text': '@',
+      'Fraction': '# ??/??',
+      'General': 'General'
+    };
+    return predefinedFormats[format] || format;
   }
 
   _formatWithThousandSeparator(numStr) {
@@ -225,5 +226,20 @@ export class ExcelFormatter {
       
       return isNegative ? `-${wholePart}` : String(wholePart);
     }
+  }
+
+  _isDateFormat(format) {
+    return format === 'date' || format === 'yyyy/mm/dd';
+  }
+
+  _formatDate(serialNumber) {
+    const baseDate = new Date(1900, 0, 1);
+    const targetDate = new Date(baseDate.getTime() + (serialNumber - 1) * 24 * 60 * 60 * 1000);
+
+    const year = targetDate.getFullYear();
+    const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+    const day = String(targetDate.getDate()).padStart(2, '0');
+
+    return `${year}/${month}/${day}`;
   }
 } 

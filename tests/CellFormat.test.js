@@ -92,13 +92,15 @@ describe('Cell Format Tests', () => {
       const testData = [[
         [
           { value: '=10+20', excelFormat: '#.00' },
-          { value: '=25*2', excelFormat: '0.00%' }
+          { value: '=25*2', excelFormat: '0.00%' },
+          { value: '=1+2', excelFormat: '@' }
         ]
       ]];
       
       const result = engine.processData(testData);
       expect(result.tables[0][0][0].displayValue).toBe('30.00');
       expect(result.tables[0][0][1].displayValue).toBe('50.00%');
+      expect(result.tables[0][0][2].displayValue).toBe('=1+2');
     });
   });
 
@@ -158,7 +160,8 @@ describe('Cell Format Tests', () => {
           { value: 1234.567, excelFormat: 'Currency' },    // $1,234.57
           { value: 0.1234, excelFormat: 'Percentage' },    // 12.34%
           { value: 1234.567, excelFormat: 'Scientific' },  // 1.23E+03
-          { value: "ABC", excelFormat: 'Text' }            // ABC
+          { value: "ABC", excelFormat: 'Text' },           // ABC
+          { value: "=SUM(A1:B1)", excelFormat: 'Text' }    // =SUM(A1:B1) として表示
         ]
       ]];
 
@@ -169,6 +172,7 @@ describe('Cell Format Tests', () => {
       expect(result.tables[0][0][2].displayValue).toBe('12.34%');
       expect(result.tables[0][0][3].displayValue).toBe('1.23E+03');
       expect(result.tables[0][0][4].displayValue).toBe('ABC');
+      expect(result.tables[0][0][5].displayValue).toBe('=SUM(A1:B1)');  // 数式がそのまま表示される
     });
 
     test('should fallback to custom format if name is not predefined', () => {
