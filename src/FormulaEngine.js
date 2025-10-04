@@ -59,14 +59,14 @@ export class FormulaEngine {
     }
   }
 
-  evaluateAst(ast, allTables, currentTableIndex) {
+  evaluateAst(ast, allTables, currentTableIndex, visited) {
     if (!ast) return null;
 
     try {
       switch (ast.type) {
         case 'operation':
-          const left = this.evaluateAst(ast.left, allTables, currentTableIndex);
-          const right = this.evaluateAst(ast.right, allTables, currentTableIndex);
+          const left = this.evaluateAst(ast.left, allTables, currentTableIndex, visited);
+          const right = this.evaluateAst(ast.right, allTables, currentTableIndex, visited);
           
           // 数値に変換
           const leftNum = Number(left);
@@ -89,15 +89,15 @@ export class FormulaEngine {
           if (!(ast.name in this.excelFunctions.functions)) {
             throw new Error(`Unknown function: ${ast.name}`);
           }
-          return this.excelFunctions.functions[ast.name](ast.arguments, allTables, currentTableIndex);
+          return this.excelFunctions.functions[ast.name](ast.arguments, allTables, currentTableIndex, visited);
 
         case 'cell':
           const tableIndex = ast.tableId !== undefined ? ast.tableId : currentTableIndex;
-          return this.getCellValue(ast.reference, allTables, tableIndex);
+          return this.getCellValue(ast.reference, allTables, tableIndex, visited);
 
         case 'range':
           const rangeTableIndex = ast.tableId !== undefined ? ast.tableId : currentTableIndex;
-          return this.getRangeValues(ast.reference, allTables, rangeTableIndex);
+          return this.getRangeValues(ast.reference, allTables, rangeTableIndex, visited);
 
         case 'literal':
           return ast.value;
@@ -110,7 +110,7 @@ export class FormulaEngine {
     }
   }
 
-  getRangeValues(range, data, tableIndex) {
+  getRangeValues(range, data, tableIndex, visited) {
     try {
       if (tableIndex >= data.length) {
         return null;
@@ -131,7 +131,11 @@ export class FormulaEngine {
         for (let col = Math.min(start.col, end.col); col <= Math.max(start.col, end.col); col++) {
           if (table?.[row]?.[col]) {
             const cell = table[row][col];
-            const value = cell.resolvedValue !== undefined ? cell.resolvedValue : cell.value;
+            let value = cell.resolvedValue !== undefined ? cell.resolvedValue : cell.value;
+            if (typeof value === 'string' && value.startsWith('=')) {
+              // オンデマンドで評価（循環検出のため visited を伝播）
+              value = this.evaluateFormula(value, data, tableIndex, visited ?? new Set());
+            }
             const numValue = Number(value);
             if (!isNaN(numValue)) {
               values.push(numValue);
@@ -146,7 +150,7 @@ export class FormulaEngine {
     }
   }
 
-  getCellValue(ref, data, tableIndex) {
+  getCellValue(ref, data, tableIndex, visited) {
     if (tableIndex >= data.length) {
       return '#REF!';
     }
@@ -158,7 +162,12 @@ export class FormulaEngine {
 
     try {
       const cell = data[tableIndex][cellRef.row][cellRef.col];
-      return cell.resolvedValue !== undefined ? cell.resolvedValue : cell.value;
+      const raw = cell.resolvedValue !== undefined ? cell.resolvedValue : cell.value;
+      if (typeof raw === 'string' && raw.startsWith('=')) {
+        // オンデマンド評価（循環検出のため visited を伝播）
+        return this.evaluateFormula(raw, data, tableIndex, visited ?? new Set());
+      }
+      return raw;
     } catch (e) {
       return '#REF!';
     }

@@ -64,6 +64,11 @@ describe('Cell Reference Tests', () => {
       const result = engine.evaluateFormula('=a2+b2', testData, 0);
       expect(result).toBe(3); // 1 + 2 = 3
     });
+
+    test('should add two numeric cells with lowercase refs', () => {
+      const result = engine.evaluateFormula('=a2+a3', testData, 0);
+      expect(result).toBe(5);
+    });
   });
 
   describe('Absolute Cell References', () => {

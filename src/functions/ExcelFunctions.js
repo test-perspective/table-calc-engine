@@ -7,9 +7,9 @@ export class ExcelFunctions {
             .map((methodName) => [methodName.toUpperCase(), (...args) => this[methodName](...args)]))
   }
 
-  SUM(args, allTables, currentTableIndex) {
+  SUM(args, allTables, currentTableIndex, visited) {
     try {
-      const values = this.getFunctionArgValues(args, allTables, currentTableIndex);
+      const values = this.getFunctionArgValues(args, allTables, currentTableIndex, visited);
       const numbers = values
         .map(v => Number(v))
         .filter(n => !isNaN(n));
@@ -19,9 +19,9 @@ export class ExcelFunctions {
     }
   }
 
-  AVERAGE(args, allTables, currentTableIndex) {
+  AVERAGE(args, allTables, currentTableIndex, visited) {
     try {
-      const values = this.getFunctionArgValues(args, allTables, currentTableIndex);
+      const values = this.getFunctionArgValues(args, allTables, currentTableIndex, visited);
       const numbers = values
         .map(v => Number(v))
         .filter(n => !isNaN(n));
@@ -32,9 +32,9 @@ export class ExcelFunctions {
     }
   }
 
-  COUNT(args, allTables, currentTableIndex) {
+  COUNT(args, allTables, currentTableIndex, visited) {
     try {
-      const values = this.getFunctionArgValues(args, allTables, currentTableIndex);
+      const values = this.getFunctionArgValues(args, allTables, currentTableIndex, visited);
       return values.filter(value => 
         typeof value === 'number' || 
         (typeof value === 'string' && !isNaN(value))
@@ -44,9 +44,9 @@ export class ExcelFunctions {
     }
   }
 
-  MAX(args, allTables, currentTableIndex) {
+  MAX(args, allTables, currentTableIndex, visited) {
     try {
-      const values = this.getFunctionArgValues(args, allTables, currentTableIndex);
+      const values = this.getFunctionArgValues(args, allTables, currentTableIndex, visited);
       const numbers = values
         .map(v => Number(v))
         .filter(n => !isNaN(n));
@@ -57,9 +57,9 @@ export class ExcelFunctions {
     }
   }
 
-  MIN(args, allTables, currentTableIndex) {
+  MIN(args, allTables, currentTableIndex, visited) {
     try {
-      const values = this.getFunctionArgValues(args, allTables, currentTableIndex);
+      const values = this.getFunctionArgValues(args, allTables, currentTableIndex, visited);
       const numbers = values
         .map(v => Number(v))
         .filter(n => !isNaN(n));
@@ -70,9 +70,9 @@ export class ExcelFunctions {
     }
   }
 
-  DATE(args, allTables, currentTableIndex) {
+  DATE(args, allTables, currentTableIndex, visited) {
     try {
-      const values = this.getFunctionArgValues(args, allTables, currentTableIndex);
+      const values = this.getFunctionArgValues(args, allTables, currentTableIndex, visited);
       
       // 引数が3つであることを確認
       if (values.length !== 3) {
@@ -121,7 +121,7 @@ export class ExcelFunctions {
     }
   }
 
-  TODAY(args, allTables, currentTableIndex) {
+  TODAY(args, allTables, currentTableIndex, visited) {
     try {
       // 引数は無視する（Excelの仕様に準拠）
       const now = new Date();
@@ -139,14 +139,14 @@ export class ExcelFunctions {
     }
   }
 
-  getFunctionArgValues(args, allTables, currentTableIndex) {
+  getFunctionArgValues(args, allTables, currentTableIndex, visited) {
     return args.map(arg => {
       if (arg.type === 'range') {
         const tableIndex = arg.tableId !== undefined ? arg.tableId : currentTableIndex;
-        return this.engine.getRangeValues(arg.reference, allTables, tableIndex);
+        return this.engine.getRangeValues(arg.reference, allTables, tableIndex, visited);
       } else if (arg.type === 'cell') {
         const tableIndex = arg.tableId !== undefined ? arg.tableId : currentTableIndex;
-        return [this.engine.getCellValue(arg.reference, allTables, tableIndex)];
+        return [this.engine.getCellValue(arg.reference, allTables, tableIndex, visited)];
       } else if (arg.type === 'literal') {
         return [arg.value];
       }
