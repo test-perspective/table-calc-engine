@@ -17,9 +17,10 @@ describe('Error Case - compute D3 and D4', () => {
     // - D3 = A2 + B3 = 4 + 8 = 12
     // - D2 = D4 + 1 = 13
     testData = [[
-      [ { value: 1 }, { value: 2 }, { value: 3 } ],
+      [ { value: undefined }, { value: undefined }, { value: undefined }, { value: undefined } ],
       [ { value: 4 }, { value: 5 }, { value: 6 }, { value: '=d4+1' } ],
-      [ { value: 7 }, { value: 8 }, { value: 9 }, { value: '=a2+b3' } ]
+      [ { value: 7 }, { value: 8 }, { value: 9 } ],
+      [ { value: undefined }, { value: undefined }, { value: undefined }, { value: '=a2+b3' } ]
     ]];
   });
 
